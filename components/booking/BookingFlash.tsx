@@ -21,6 +21,9 @@ const OK_TEXT: Record<string, string> = {
   tawaran: "Tawaran penyelesaian terkirim. Menunggu keputusan pihak lain.",
   "tawaran-diterima": "Tawaran diterima. Perubahan sudah diterapkan.",
   "tawaran-ditolak": "Tawaran ditolak.",
+  diputuskan: "Keputusan tersimpan. Kasus selesai dan dana diselesaikan.",
+  diminta: "Permintaan informasi terkirim. Kasus menunggu jawaban pihak.",
+  dijawab: "Jawaban terkirim ke admin.",
 };
 
 const GAGAL_TEXT: Record<string, string> = {
@@ -39,6 +42,10 @@ const GAGAL_TEXT: Record<string, string> = {
   tawaran: "Tawaran tidak valid untuk status kolaborasi ini.",
   nilai: "Nilai tawaran harus berupa angka positif.",
   kedaluwarsa: "Tawaran sudah kedaluwarsa.",
+  keputusan: "Pilih salah satu keputusan yang tersedia.",
+  pertanyaan: "Pertanyaan wajib diisi.",
+  jawaban: "Jawaban wajib diisi.",
+  target: "Pilih pihak yang ditanyai.",
   gagal: "Terjadi kesalahan. Coba lagi sebentar.",
 };
 

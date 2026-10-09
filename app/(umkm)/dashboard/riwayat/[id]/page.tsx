@@ -1,5 +1,6 @@
 import { getInfluencerById } from "@/lib/data/catalog";
 import { getBookingDetail, getReviewForBookingRole } from "@/lib/data/bookings";
+import { getDisputeForBooking } from "@/lib/data/disputes";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -12,6 +13,7 @@ import {
   BookingDetailView,
   BookingFlash,
   SectionCard,
+  SengketaCard,
   UmkmActions,
 } from "@/components/booking";
 
@@ -38,6 +40,7 @@ export default async function BookingDetailPage(
 
   const influencer = await getInfluencerById(booking.influencerId);
   const reviewed = await getReviewForBookingRole(booking.id, "umkm");
+  const dispute = await getDisputeForBooking(booking.id);
   const searchParams = await props.searchParams;
   const ok = typeof searchParams.ok === "string" ? searchParams.ok : undefined;
   const gagal =
@@ -87,13 +90,22 @@ export default async function BookingDetailPage(
               : null
           }
         >
+          {dispute && (
+            <SengketaCard
+              dispute={dispute}
+              perspective="umkm"
+              bookingId={booking.id}
+              next={`/dashboard/riwayat/${booking.id}`}
+            />
+          )}
           <SectionCard
             title="Aksi"
             action={<StatusBadge status={booking.status} />}
           >
             <div className="space-y-5">
               <UmkmActions booking={booking} />
-              {booking.status === "COMPLETED" && (
+              {(booking.status === "COMPLETED" ||
+                dispute?.status === "RESOLVED") && (
                 <Button
                   variant={reviewed ? "secondary" : "primary"}
                   href={`/review/${booking.id}`}

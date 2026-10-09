@@ -1,5 +1,6 @@
 import { getUmkmById } from "@/lib/data/catalog";
 import { getBookingDetail, getReviewForBookingRole } from "@/lib/data/bookings";
+import { getDisputeForBooking } from "@/lib/data/disputes";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -14,6 +15,7 @@ import {
   BookingFlash,
   CreatorActions,
   SectionCard,
+  SengketaCard,
 } from "@/components/booking";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,7 @@ export default async function CreatorBookingDetailPage(
 
   const umkm = await getUmkmById(booking.umkmId);
   const reviewed = await getReviewForBookingRole(booking.id, "influencer");
+  const dispute = await getDisputeForBooking(booking.id);
   const searchParams = await props.searchParams;
   const ok = typeof searchParams.ok === "string" ? searchParams.ok : undefined;
   const gagal =
@@ -89,13 +92,22 @@ export default async function CreatorBookingDetailPage(
               : null
           }
         >
+          {dispute && (
+            <SengketaCard
+              dispute={dispute}
+              perspective="influencer"
+              bookingId={booking.id}
+              next={`/dashboard/influencer/riwayat/${booking.id}`}
+            />
+          )}
           <SectionCard
             title="Aksi"
             action={<StatusBadge status={booking.status} />}
           >
             <div className="space-y-5">
               <CreatorActions booking={booking} />
-              {booking.status === "COMPLETED" && (
+              {(booking.status === "COMPLETED" ||
+                dispute?.status === "RESOLVED") && (
                 <Button
                   variant={reviewed ? "secondary" : "primary"}
                   href={`/review/${booking.id}`}
