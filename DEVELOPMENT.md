@@ -111,17 +111,17 @@ app/
       page.tsx            # UMKM dashboard: KPI cards, recommendations, history summary
       riwayat/            # Full UMKM collaboration history
       profile/            # UMKM business profile view + edit
-      chat/               # Chat list (coming-soon stub → ARCHITECTURE.md §2.7)
+      chat/               # Chat list, one thread per booking (ARCHITECTURE.md §2.7)
   actions.ts              # Server Actions: login/logout, submitBooking, submitReview,
                           # booking-lifecycle (accept/decline/pay/submit/revision/approve/cancel/dispute),
-                          # updateProfile (+ future: offers, chat — see ARCHITECTURE.md)
+                          # updateProfile, sendMessage, markChatRead, offers (see ARCHITECTURE.md)
   page.tsx                # Landing page
   influencers/            # Creator list + filters, creator detail (packages, reviews)
   booking/[influencerId]/ # Collaboration request form: creates PENDING booking + chat room (UMKM-only guard)
   review/[bookingId]/     # Two-way rating & review form (after COMPLETED booking or dispute decision)
   insights/               # Market price insights per category
   dashboard/
-    influencer/           # Creator dashboard (+ planned: chat/, paket/, sidebar+header shell — see ARCHITECTURE.md §4)
+    influencer/           # Creator dashboard (chat is live; paket/ and shell planned — see ARCHITECTURE.md §4)
   admin/                  # Admin: dashboard, Antrian Kasus, Detail Kasus, profile (see ARCHITECTURE.md §5)
   login/                  # Login / signup pages (Supabase Auth, see §9)
 components/               # Navbar, Footer, DashboardShell (sidebar+header), UmkmShell (server wrapper),
@@ -212,9 +212,9 @@ export const config = {
 | `/dashboard` | UMKM dashboard (sidebar shell, KPI cards, recommendations, history summary) | Supabase session + `umkm` role |
 | `/dashboard/riwayat` | Full UMKM collaboration history | Supabase session + `umkm` role |
 | `/dashboard/profile` | UMKM business profile view + edit | Supabase session + `umkm` role |
-| `/dashboard/chat` | UMKM chat list, one conversation per booking (coming-soon stub) | Supabase session + `umkm` role |
+| `/dashboard/chat` | UMKM chat list, one conversation per booking, read from the database | Supabase session + `umkm` role |
 | `/dashboard/influencer` | Creator dashboard: incoming requests, status updates, income | Supabase session + `influencer` role |
-| `/dashboard/influencer/chat` | (planned) Creator chat list — see ARCHITECTURE.md §4 | Supabase session + `influencer` role |
+| `/dashboard/influencer/chat` | Creator chat list, one conversation per booking, read from the database | Supabase session + `influencer` role |
 | `/dashboard/influencer/paket` | (planned) `Paket & Harga` management — see ARCHITECTURE.md §4.6 | Supabase session + `influencer` role |
 | `/admin` | (planned) Admin dashboard: case queue summary — see ARCHITECTURE.md §5 | Supabase session + `admin` role |
 | `/admin/kasus` | (planned) `Antrian Kasus` full list — see ARCHITECTURE.md §5.7 | Supabase session + `admin` role |
@@ -468,14 +468,15 @@ a name with **no `NEXT_PUBLIC_` prefix**. That prefix is what makes Next inline 
 value into the browser bundle; dropping it from this one variable is deliberate,
 not a naming inconsistency, so do not "fix" it by adding the prefix.
 
-**Five tables are deliberately policy-less:** `conversations`, `messages`,
-`disputes`, `dispute_infos`, `notifications`. They belong to capabilities that are
-out of scope for now. RLS is enabled with no policy, so they return an empty result
-rather than an error. In particular **a dispute can be opened but not read back** —
-it is recorded as awaiting a decision. Each gains its policy when its capability
-lands; do not add one early. `resolution_offers` left this list when offers landed:
-it now carries `resolution_offers_party_read`, a party-scoped `SELECT` policy that
-resolves the caller through the booking exactly like `bookings_party_read`.
+**Three tables are deliberately policy-less:** `disputes`, `dispute_infos`, and
+`notifications`. They belong to capabilities that are out of scope for now. RLS is
+enabled with no policy, so they return an empty result rather than an error. In
+particular **a dispute can be opened but not read back** — it is recorded as
+awaiting a decision. Each gains its policy when its capability lands; do not add
+one early. `resolution_offers`, `conversations`, and `messages` left this list when
+their capabilities landed: each now carries a party-scoped `SELECT` policy
+(`resolution_offers_party_read`, `conversations_party_read`, `messages_party_read`)
+that resolves the caller through the booking exactly like `bookings_party_read`.
 
 Write model: **all writes go through Server Actions using a service-role client**
 (server-only, bypasses RLS). Service role is only ever used on rows the caller
@@ -554,9 +555,24 @@ deadline passes; every transition is user-initiated. If you are looking for the
 job that acts on these columns, there isn't one and there is not meant to be one
 yet — do not add a background sweep without a product decision.
 
-Chat access, once the capability lands: conversation participants (the two parties
-of the booking) may read/write messages; `admin` may read a booking's chat **only**
-while its dispute is undecided (`OPEN` / `NEED_INFO`), e.g.:
+**Chat is the third database-owned flow.**
+`supabase/migrations/20261007140000_chat.sql` adds the party-scoped read policies
+`conversations_party_read` and `messages_party_read` (no write policy: the browser
+key still cannot insert a message), an index on `messages (conversation_id,
+sent_at)`, and two functions. `send_message(p_booking_id, p_actor_role, p_body)`
+locks the booking, refuses a role that is not a party and an empty body, truncates a
+body over 2000 characters, refuses `COMPLETED` / `CANCELLED` / `REJECTED`, resolves
+the sender from the role and the booking, creates the conversation on demand, and
+inserts the message. `mark_conversation_read(p_booking_id, p_actor_role)` marks
+every message the other party sent with `read_at is null` as read and returns the
+number changed; the unread badge is that count on read. `submit_booking` writes the
+brief as the conversation's first message, so every booking has a thread. Chat is
+open from `PENDING` through `DISPUTED`, read-only in `COMPLETED` / `CANCELLED`, and
+closed in `REJECTED`.
+
+Admin read access to a booking's chat arrives with the admin dispute capability and
+applies **only** while its dispute is undecided (`OPEN` / `NEED_INFO`); until then an
+admin who is not a party reads no chat:
 
 ```sql
 create policy "dispute chat read for admin" on messages
