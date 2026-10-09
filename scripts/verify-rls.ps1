@@ -65,14 +65,14 @@ foreach ($t in @('categories', 'umkms', 'influencers', 'packages', 'reviews')) {
 
 Write-Output ""
 Write-Output "=== anonymous reads: everything scoped is closed ==="
-foreach ($t in @('bookings', 'payments', 'deliveries', 'booking_events', 'revision_requests', 'resolution_offers', 'profiles')) {
+foreach ($t in @('bookings', 'payments', 'deliveries', 'booking_events', 'revision_requests', 'resolution_offers', 'profiles', 'conversations', 'messages')) {
   $n = Count-Rows $t $null
   Check "anon gets nothing from $t" ($n -eq 0) "$n rows"
 }
 
 Write-Output ""
-Write-Output "=== anon reads: policy-less tables deny by default, and so do party reads ==="
-foreach ($t in @('conversations', 'messages', 'notifications', 'disputes', 'dispute_infos')) {
+Write-Output "=== anon reads: the still-deferred tables deny by default ==="
+foreach ($t in @('notifications', 'disputes', 'dispute_infos')) {
   $n = Count-Rows $t $null
   Check "anon gets nothing from $t" ($n -eq 0) "$n rows"
 }
@@ -91,6 +91,11 @@ Write-Output "=== a party reads its own rows ==="
 Check 'budi sees his one booking' ((Count-Rows 'bookings' $budi) -eq 1) '1 row'
 Check 'dewi sees her one booking' ((Count-Rows 'bookings' $dewi) -eq 1) '1 row'
 Check 'rara is a party to both, so sees two' ((Count-Rows 'bookings' $rara) -eq 2) '2 rows'
+Check "budi sees his booking's four messages" ((Count-Rows 'messages' $budi) -eq 4) '4 rows'
+Check "dewi sees her booking's three messages" ((Count-Rows 'messages' $dewi) -eq 3) '3 rows'
+Check 'rara is a party to both threads, so sees all seven' ((Count-Rows 'messages' $rara) -eq 7) '7 rows'
+Check 'budi sees his one conversation' ((Count-Rows 'conversations' $budi) -eq 1) '1 row'
+Check 'rara is a party to both conversations' ((Count-Rows 'conversations' $rara) -eq 2) '2 rows'
 
 Write-Output ""
 Write-Output "=== a non-party reads nothing, and the refusal is the policy's ==="
@@ -99,6 +104,8 @@ Check 'siti sees no payment' ((Count-Rows 'payments' $siti) -eq 0) '0 rows'
 Check 'siti sees no delivery' ((Count-Rows 'deliveries' $siti) -eq 0) '0 rows'
 Check 'siti sees no booking event' ((Count-Rows 'booking_events' $siti) -eq 0) '0 rows'
 Check 'siti sees no revision request' ((Count-Rows 'revision_requests' $siti) -eq 0) '0 rows'
+Check 'siti sees no message' ((Count-Rows 'messages' $siti) -eq 0) '0 rows'
+Check 'siti sees no conversation' ((Count-Rows 'conversations' $siti) -eq 0) '0 rows'
 
 Write-Output ""
 Write-Output "=== profiles: your own row, never anyone else's ==="
@@ -149,6 +156,7 @@ Try-Insert 'a party cannot insert a booking, even for itself' 'bookings' $bookin
 Try-Insert 'a signed-out caller cannot insert a booking' 'bookings' $booking $null
 Try-Insert "a user cannot insert its own profile row" 'profiles' '{"user_id":"00000000-0000-4000-8000-000000000000","role":"admin"}' $siti
 Try-Insert 'nobody can insert a dispute' 'disputes' $dispute $budi
+Try-Insert 'a user cannot insert a message' 'messages' '{"conversation_id":1,"sender_id":"22222222-2222-4222-8222-222222222222","body":"probe"}' $rara
 
 Write-Output ""
 Write-Output "=== an update or delete changes nothing ==="
@@ -176,9 +184,11 @@ $after = @(
   "umkms="     + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.umkms" 2>$null).Trim(),
   "influencers=" + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.influencers" 2>$null).Trim(),
   "bookings="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.bookings" 2>$null).Trim(),
-  "profiles="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.profiles" 2>$null).Trim()
+  "profiles="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.profiles" 2>$null).Trim(),
+  "conversations=" + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.conversations" 2>$null).Trim(),
+  "messages="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.messages" 2>$null).Trim()
 ) -join ' '
-Check 'row counts are untouched' ($after -match 'umkms=4' -and $after -match 'influencers=4' -and $after -match 'bookings=2' -and $after -match 'profiles=9') $after
+Check 'row counts are untouched' ($after -match 'umkms=4' -and $after -match 'influencers=4' -and $after -match 'bookings=2' -and $after -match 'profiles=9' -and $after -match 'conversations=2' -and $after -match 'messages=7') $after
 
 Write-Output ""
 if ($script:failures -eq 0) { Write-Output "ALL CHECKS PASSED" } else { Write-Output "$($script:failures) CHECK(S) FAILED" }

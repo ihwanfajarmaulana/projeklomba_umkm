@@ -1,14 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { ChatList, ChatThread, ChatInput } from "@/components/chat";
 import type { ChatConversation, ChatMessage, ChatState } from "@/components/chat";
+import { markChatRead, sendMessage } from "@/app/actions";
+
+type OptimisticUpdate = { conversationId: string; message: ChatMessage };
 
 /**
  * ChatClient — halaman chat kreator (ARCHITECTURE §2.7). Satu percakapan per
  * booking; state per status: open (PENDING..DISPUTED), readonly
- * (COMPLETED/CANCELLED), closed (REJECTED). Kirim pesan hanya saat open,
- * append lokal (prototipe).
+ * (COMPLETED/CANCELLED), closed (REJECTED). Kirim pesan memanggil Server Action
+ * `sendMessage` dan tersimpan di `messages`; `markChatRead` membersihkan badge
+ * saat percakapan dibuka.
  */
 export function ChatClient({
   conversations,
@@ -23,8 +34,20 @@ export function ChatClient({
   const [activeId, setActiveId] = useState(
     conversations[0]?.id ?? "",
   );
-  const [threads, setThreads] = useState<Record<string, ChatMessage[]>>(
+  const [, startTransition] = useTransition();
+
+  // Entri dikirim langsung tampil lewat optimistic update; begitu Server Action
+  // selesai dan revalidate mengirim data baru, optimistic ini dilepas dan diganti
+  // baris `messages` yang sebenarnya.
+  const [threads, addOptimistic] = useOptimistic(
     messages,
+    (current: Record<string, ChatMessage[]>, update: OptimisticUpdate) => ({
+      ...current,
+      [update.conversationId]: [
+        ...(current[update.conversationId] ?? []),
+        update.message,
+      ],
+    }),
   );
 
   const active = useMemo(
@@ -35,19 +58,37 @@ export function ChatClient({
   const activeMessages = active ? threads[active.id] ?? [] : [];
   const state: ChatState = active?.state ?? "closed";
 
+  // Membuka percakapan menandai pesan pihak lawan sebagai dibaca. Kunci pada
+  // id percakapan supaya hanya sekali per pemilihan.
+  const markedRef = useRef<string>("");
+  useEffect(() => {
+    if (!active || markedRef.current === active.id) return;
+    markedRef.current = active.id;
+    const formData = new FormData();
+    formData.set("bookingId", String(active.bookingId));
+    startTransition(() => {
+      void markChatRead(formData);
+    });
+  }, [active, startTransition]);
+
   const send = (text: string) => {
     if (!active) return;
+    const conversationId = active.id;
     const message: ChatMessage = {
-      id: `${active.id}-${Date.now()}`,
+      id: `${conversationId}-local-${Date.now()}`,
       side: "me",
       senderName: userName,
       text,
       time: "Baru saja",
     };
-    setThreads((prev) => ({
-      ...prev,
-      [active.id]: [...(prev[active.id] ?? []), message],
-    }));
+
+    const formData = new FormData();
+    formData.set("bookingId", String(active.bookingId));
+    formData.set("body", text);
+    startTransition(async () => {
+      addOptimistic({ conversationId, message });
+      await sendMessage(formData);
+    });
   };
 
   return (

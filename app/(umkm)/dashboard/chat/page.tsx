@@ -1,8 +1,10 @@
 import { getBookingsByUmkm } from "@/lib/data/bookings";
+import { getChatMessagesForBookings } from "@/lib/data/chat";
+import type { ChatMessageRecord } from "@/lib/data/chat";
 import type { Metadata } from "next";
 import { requireUmkm } from "@/lib/auth";
 
-import { formatDate, initials } from "@/lib/format";
+import { formatDate, formatDateTime, initials } from "@/lib/format";
 import type { ChatConversation, ChatMessage, ChatState } from "@/components/chat";
 import { ChatClient } from "./chat-client";
 
@@ -17,6 +19,7 @@ export const metadata: Metadata = {
 function chatStateOf(status: string): ChatState {
   switch (status) {
     case "COMPLETED":
+    case "CANCELLED":
       return "readonly";
     case "REJECTED":
       return "closed";
@@ -29,42 +32,49 @@ export default async function ChatPage() {
   const account = await requireUmkm();
 
   const bookings = await getBookingsByUmkm(account.umkmId);
+  const records = await getChatMessagesForBookings(bookings.map((b) => b.id));
 
-  // Satu percakapan per booking (§2.7). Pesan lain difixture deterministik
-  // dari brief; kirim pesan hanya memengaruhi state lokal prototipe.
-  const conversations: ChatConversation[] = bookings.map((b) => ({
-    id: `booking-${b.id}`,
-    partnerName: b.influencerName,
-    partnerInitial: initials(b.influencerName),
-    lastMessage: b.brief,
-    time: formatDate(b.createdAt),
-    unread: b.status === "PENDING" || b.status === "ACCEPTED" ? 1 : 0,
-    state: chatStateOf(b.status),
-  }));
+  // Satu percakapan per booking (§2.7) dengan pihak lawan = kreator. Pesan dibaca
+  // dari `messages` lewat RLS party-scoped; badge unread = pesan lawan yang
+  // belum ditandai baca.
+  const byBooking = new Map<number, ChatMessageRecord[]>();
+  for (const record of records) {
+    const thread = byBooking.get(record.bookingId) ?? [];
+    thread.push(record);
+    byBooking.set(record.bookingId, thread);
+  }
+
+  const conversations: ChatConversation[] = bookings.map((b) => {
+    const thread = byBooking.get(b.id) ?? [];
+    const last = thread[thread.length - 1];
+    const unread = thread.filter(
+      (m) => m.senderId !== account.userId && m.readAt === null,
+    ).length;
+    return {
+      id: `booking-${b.id}`,
+      bookingId: b.id,
+      partnerName: b.influencerName,
+      partnerInitial: initials(b.influencerName),
+      lastMessage: last?.body ?? "Belum ada pesan",
+      time: formatDate(last?.sentAt ?? b.createdAt),
+      unread,
+      state: chatStateOf(b.status),
+    };
+  });
 
   const messages: Record<string, ChatMessage[]> = {};
   for (const b of bookings) {
-    const id = `booking-${b.id}`;
-    const brief: ChatMessage = {
-      id: `${id}-brief`,
-      side: "me",
-      senderName: account.fullName,
-      text: b.brief,
-      time: formatDate(b.createdAt),
-    };
-    const reply: ChatMessage = {
-      id: `${id}-reply`,
-      side: "other",
-      senderName: b.influencerName,
-      text:
-        b.status === "COMPLETED"
-          ? "Konten sudah saya kirim — terima kasih atas kolaborasinya! 🙌"
-          : b.status === "REJECTED"
-            ? "Mohon maaf, jadwal saya penuh untuk periode ini."
-            : "Siap, brief-nya jelas. Saya konfirmasi lewat dashboard dan mulai garap ya.",
-      time: formatDate(b.createdAt),
-    };
-    messages[id] = [brief, reply];
+    const thread = byBooking.get(b.id) ?? [];
+    messages[`booking-${b.id}`] = thread.map((m) => {
+      const mine = m.senderId === account.userId;
+      return {
+        id: String(m.id),
+        side: mine ? "me" : "other",
+        senderName: mine ? account.fullName : b.influencerName,
+        text: m.body,
+        time: formatDateTime(m.sentAt),
+      };
+    });
   }
 
   return (
