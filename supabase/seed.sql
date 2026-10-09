@@ -421,6 +421,70 @@ update public.influencers i
  where i.id = tallied.reviewee_influencer_id;
 
 -- ----------------------------------------------------------------------------
+-- Chat
+--
+-- One conversation per booking, created the moment the booking is made (the same
+-- rule `submit_booking` follows), plus a short exchange so the chat page has
+-- something to render before anyone types. The business's first message is the
+-- brief itself, which is why it repeats the booking's `brief`.
+--
+-- read_at records when the *recipient* saw a message. On the open booking
+-- (ACCEPTED) Rara's last reply is left unread, so Budi's chat list shows a badge;
+-- on the finished booking every message is read, because the thread is already
+-- read-only.
+-- ----------------------------------------------------------------------------
+
+insert into public.conversations (booking_id)
+select id from public.bookings order by id;
+
+-- Booking 1: Budi (umkm 1) x Rara (influencer 1), still moving.
+insert into public.messages (conversation_id, sender_id, body, sent_at, read_at)
+select c.id, '11111111-1111-4111-8111-111111111111'::uuid, b.brief,
+       b.created_at, b.created_at + interval '3 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0002'
+union all
+select c.id, '22222222-2222-4222-8222-222222222222'::uuid,
+       'Halo kak Budi! Brief-nya sudah saya baca. Night vibe grand opening-nya seru, saya mulai dari sesi golden hour ya.',
+       b.created_at + interval '3 hours', b.created_at + interval '1 day'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0002'
+union all
+select c.id, '11111111-1111-4111-8111-111111111111'::uuid,
+       'Mantap, ditunggu! Kalau butuh info menu baru tinggal chat ya.',
+       b.created_at + interval '1 day', b.created_at + interval '1 day 3 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0002'
+union all
+select c.id, '22222222-2222-4222-8222-222222222222'::uuid,
+       'Siap! Draft ronde pertama saya kirim lewat delivery ya kak.',
+       b.created_at + interval '1 day 3 hours', null::timestamptz
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0002';
+
+-- Booking 2: Dewi (umkm 3) x Rara (influencer 1), finished. Every message read.
+-- Timestamps hang off `created_at`, not `completed_at`: the seeded finished
+-- booking is backdated on completion only, so `completed_at` sits before
+-- `created_at` and anchoring there would put the last message first.
+insert into public.messages (conversation_id, sender_id, body, sent_at, read_at)
+select c.id, '55555555-5555-4555-8555-555555555555'::uuid, b.brief,
+       b.created_at, b.created_at + interval '3 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0007'
+union all
+select c.id, '22222222-2222-4222-8222-222222222222'::uuid,
+       'Terima kasih kak Dewi! Saya review kopi gayo single origin plus breakfast set-nya ya.',
+       b.created_at + interval '3 hours', b.created_at + interval '5 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0007'
+union all
+select c.id, '55555555-5555-4555-8555-555555555555'::uuid,
+       'Hasilnya bagus banget, terima kasih!',
+       b.created_at + interval '5 hours', b.created_at + interval '6 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0007';
+
+-- ----------------------------------------------------------------------------
 -- Bridge alignment
 --
 -- `onboard` writes to Postgres and mirrors the record into SQLite under the
@@ -468,5 +532,7 @@ union all select 'deliveries',      count(*) from public.deliveries
 union all select 'payments',        count(*) from public.payments
 union all select 'booking_events',  count(*) from public.booking_events
 union all select 'reviews',         count(*) from public.reviews
+union all select 'conversations',   count(*) from public.conversations
+union all select 'messages',        count(*) from public.messages
 union all select 'auth_users',      count(*) from auth.users where email like '%@kolab.id'
 order by 1;

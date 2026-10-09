@@ -17,6 +17,8 @@ export type ChatMessage = {
 
 export type ChatConversation = {
   id: string;
+  /** Booking the thread belongs to; the write target when sending. */
+  bookingId: number;
   partnerName: string;
   partnerInitial: string;
   lastMessage: string;

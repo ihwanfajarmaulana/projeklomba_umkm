@@ -652,10 +652,22 @@ export async function submitBooking(formData: FormData): Promise<void> {
 
   if (!booking) redirect(`/booking/${influencerId}?gagal=1`);
 
-  // Chat is deferred, but the conversation row belongs to the booking's
-  // creation. Writing it here keeps the pair together instead of inventing a
-  // conversation later from a status.
-  await admin.from("conversations").insert({ booking_id: booking.id });
+  // Chat: the conversation row belongs to the booking's creation. Writing the
+  // brief as the first message keeps the thread substantive from the start
+  // instead of the conversation existing with nothing in it.
+  const { data: conversation } = await admin
+    .from("conversations")
+    .insert({ booking_id: booking.id })
+    .select("id")
+    .single();
+
+  if (conversation) {
+    await admin.from("messages").insert({
+      conversation_id: conversation.id,
+      sender_id: account.userId,
+      body: brief,
+    });
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/influencer");
@@ -1005,6 +1017,74 @@ export async function respondToOffer(formData: FormData): Promise<void> {
   redirect(
     `${back}?ok=${accept ? "tawaran-diterima" : "tawaran-ditolak"}`,
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat (ARCHITECTURE §2.7)                                            */
+/*                                                                     */
+/* Messaging is a write, so it follows the same rule as the lifecycle   */
+/* actions: read the booking through the caller's own session first,    */
+/* then write through the service role. `send_message` resolves the     */
+/* sender from the role and the booking, so no user id crosses the      */
+/* boundary. Reads are RLS-scoped in lib/data/chat.ts.                  */
+/* ------------------------------------------------------------------ */
+
+const UMKM_CHAT = "/dashboard/chat";
+const CREATOR_CHAT = "/dashboard/influencer/chat";
+
+/** Party check shared by both chat actions; null means "not your booking". */
+async function ownedChat(formData: FormData): Promise<{
+  role: PartyRole;
+  bookingId: number;
+  path: string;
+} | null> {
+  const account = await requireParty();
+  const role = partyRole(account.role);
+  if (!role) return null;
+
+  const booking = await fetchOwned(formData);
+  const isParty =
+    booking &&
+    (role === "umkm"
+      ? booking.umkmId === account.umkmId
+      : booking.influencerId === account.influencerId);
+  if (!isParty) return null;
+
+  return {
+    role,
+    bookingId: booking.id,
+    path: role === "umkm" ? UMKM_CHAT : CREATOR_CHAT,
+  };
+}
+
+export async function sendMessage(formData: FormData): Promise<void> {
+  const owned = await ownedChat(formData);
+  if (!owned) redirect("/dashboard");
+
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return;
+
+  const { error } = await createAdminClient().rpc("send_message", {
+    p_booking_id: owned.bookingId,
+    p_actor_role: owned.role,
+    p_body: body.slice(0, 2000),
+  });
+  // A closed thread or a missing party is a refusal, not a crash: the page
+  // re-renders unchanged and the message is simply not stored.
+  if (error) console.error(`[chat] sendMessage failed: ${error.message}`);
+
+  revalidatePath(owned.path);
+}
+
+export async function markChatRead(formData: FormData): Promise<void> {
+  const owned = await ownedChat(formData);
+  if (!owned) return;
+
+  await createAdminClient().rpc("mark_conversation_read", {
+    p_booking_id: owned.bookingId,
+    p_actor_role: owned.role,
+  });
+  revalidatePath(owned.path);
 }
 
 /* ------------------------------------------------------------------ */

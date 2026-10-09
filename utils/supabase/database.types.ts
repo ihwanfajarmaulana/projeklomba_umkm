@@ -619,6 +619,23 @@ isOneToOne: false
         to: "bookings"
         isOneToOne: true
         isSetofReturn: false
+      } },
+"mark_conversation_read":
+{ Args: { "p_actor_role": Database["public"]['Enums']["actor_role"],"p_booking_id": number }; Returns: number },
+"send_message":
+{ Args: { "p_actor_role": Database["public"]['Enums']["actor_role"],"p_body": string,"p_booking_id": number }; Returns: {
+              "body": string,
+"conversation_id": number,
+"id": number,
+"read_at": string | null,
+"sender_id": string,
+"sent_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "messages"
+        isOneToOne: false
+        isSetofReturn: false
       } }
           }
           Enums: {
