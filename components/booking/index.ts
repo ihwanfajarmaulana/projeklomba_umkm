@@ -8,3 +8,4 @@ export { BookingDetailView } from "./BookingDetailView";
 export { UmkmActions } from "./UmkmActions";
 export { CreatorActions } from "./CreatorActions";
 export { BookingFlash } from "./BookingFlash";
+export { SengketaCard } from "./SengketaCard";

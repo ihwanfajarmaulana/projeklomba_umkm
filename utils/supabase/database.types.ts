@@ -622,6 +622,67 @@ isOneToOne: false
       } },
 "mark_conversation_read":
 { Args: { "p_actor_role": Database["public"]['Enums']["actor_role"],"p_booking_id": number }; Returns: number },
+"is_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean },
+"decide_dispute":
+{ Args: { "p_creator_share_percent": number,"p_decided_by": string,"p_decision": Database["public"]['Enums']["dispute_decision"],"p_dispute_id": number,"p_note": string }; Returns: {
+              "booking_id": number,
+"code": string,
+"created_at": string,
+"creator_share_percent": number | null,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision": Database["public"]['Enums']["dispute_decision"] | null,
+"decision_note": string | null,
+"due_at": string,
+"id": number,
+"opened_by": Database["public"]['Enums']["party_role"],
+"paused_at": string | null,
+"reason": string,
+"status": Database["public"]['Enums']["dispute_status"]
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "disputes"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"request_dispute_info":
+{ Args: { "p_asked_by": string,"p_dispute_id": number,"p_question": string,"p_target_role": Database["public"]['Enums']["party_role"] }; Returns: {
+              "answer": string | null,
+"answered_at": string | null,
+"answered_by": string | null,
+"asked_by": string,
+"created_at": string,
+"dispute_id": number,
+"id": number,
+"question": string,
+"target_role": Database["public"]['Enums']["party_role"]
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "dispute_infos"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"answer_dispute_info":
+{ Args: { "p_actor_role": Database["public"]['Enums']["actor_role"],"p_answer": string,"p_answered_by": string,"p_info_id": number }; Returns: {
+              "answer": string | null,
+"answered_at": string | null,
+"answered_by": string | null,
+"asked_by": string,
+"created_at": string,
+"dispute_id": number,
+"id": number,
+"question": string,
+"target_role": Database["public"]['Enums']["party_role"]
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "dispute_infos"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "send_message":
 { Args: { "p_actor_role": Database["public"]['Enums']["actor_role"],"p_body": string,"p_booking_id": number }; Returns: {
               "body": string,

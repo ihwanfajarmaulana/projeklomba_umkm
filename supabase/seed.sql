@@ -48,6 +48,10 @@
 -- ----------------------------------------------------------------------------
 
 delete from public.revision_requests;
+delete from public.notifications;
+delete from public.dispute_infos;
+delete from public.disputes;
+delete from public.resolution_offers;
 delete from public.deliveries;
 delete from public.payments;
 delete from public.booking_events;
@@ -76,6 +80,8 @@ alter table public.deliveries         alter column id restart with 1;
 alter table public.payments           alter column id restart with 1;
 alter table public.booking_events     alter column id restart with 1;
 alter table public.reviews            alter column id restart with 1;
+alter table public.disputes           alter column id restart with 1;
+alter table public.dispute_infos      alter column id restart with 1;
 alter table public.bookings           alter column id restart with 1;
 alter table public.packages           alter column id restart with 1;
 alter table public.influencers        alter column id restart with 1;
@@ -421,6 +427,175 @@ update public.influencers i
  where i.id = tallied.reviewee_influencer_id;
 
 -- ----------------------------------------------------------------------------
+-- Admin disputes
+--
+-- Three cases for the operator dashboard (ARCHITECTURE §5.7). Each booking is
+-- inserted directly at the state the lifecycle would have reached - DISPUTED for
+-- the two open cases, COMPLETED for the decided one - with the child rows that
+-- state implies: a payment, a delivery, a full transition history, and the
+-- dispute itself (plus its mediation Q&A).
+--
+-- All three belong to Nurul's Hijab Lovely (umkm 4) and a different creator, so
+-- the existing isolation story is untouched: Budi, Dewi and Rara keep exactly
+-- the bookings they already had, and Siti stays a party to none. The operator
+-- queue therefore shows one business with three partners, not one name repeated.
+--
+-- The dispute codes are DSP-2026-00NN to mirror open_dispute's own format.
+-- ----------------------------------------------------------------------------
+
+insert into public.bookings (code, umkm_id, influencer_id, package_id, package_name, amount,
+                             revision_quota, estimated_days, brief, status,
+                             accepted_at, brief_locked_at, payment_due_at, funded_at,
+                             deadline_at, submitted_at, review_due_at, revisions_used,
+                             completed_at)
+values
+  ('CLB-2026-0011', 4, 2, 5, 'Unboxing & Story', 1500000, 1, 3,
+   'Unboxing edisi terbatas, tone hangat, tayang H-3 peluncuran.', 'DISPUTED',
+   now() - interval '14 days', now() - interval '14 days', now() - interval '13 days',
+   now() - interval '12 days', now() - interval '9 days', now() - interval '6 days',
+   now() - interval '3 days', 1, null),
+  ('CLB-2026-0012', 4, 3, 7, 'Review Video', 1800000, 2, 5,
+   'Review rangkaian koleksi terbaru, satu video 30-60 detik.', 'DISPUTED',
+   now() - interval '10 days', now() - interval '10 days', now() - interval '9 days',
+   now() - interval '8 days', now() - interval '3 days', now() - interval '2 days',
+   now() + interval '1 day', 2, null),
+  ('CLB-2026-0013', 4, 4, 12, 'Kampanye Komplit', 1530000, 3, 10,
+   'Kampanye koleksi edisi peluncuran bulan depan, tone elegan.', 'COMPLETED',
+   now() - interval '30 days', now() - interval '30 days', now() - interval '29 days',
+   now() - interval '28 days', now() - interval '18 days', now() - interval '20 days',
+   now() - interval '17 days', 3, now() - interval '15 days');
+
+-- One payment each. The two open cases hold the full total; the decided case is
+-- already SPLIT 70/30, which is the same held total re-divided, never a new one.
+insert into public.payments (booking_id, total_amount, creator_amount, umkm_refund_amount, gateway_ref, status, held_at, settled_at)
+select id, amount, 0, 0, 'demo-gw-' || lower(code), 'HELD'::public.payment_status, funded_at, null
+  from public.bookings where code in ('CLB-2026-0011', 'CLB-2026-0012')
+union all
+select id, amount, 1071000, 459000, 'demo-gw-clb-2026-0013', 'SPLIT'::public.payment_status, funded_at, now() - interval '15 days'
+  from public.bookings where code = 'CLB-2026-0013';
+
+insert into public.deliveries (booking_id, round, content_url, note, submitted_at)
+select id, 1, 'https://example.com/deliveries/' || lower(code) || '-r1',
+       'Ronde 1 dikirim mengikuti brief.', submitted_at
+  from public.bookings where code like 'CLB-2026-001%';
+
+-- Transition history, in order. The decided case ends with the operator's move,
+-- which `apply_booking_transition` owns; here it is written directly because the
+-- row is inserted already COMPLETED.
+insert into public.booking_events (booking_id, actor_id, actor_role, from_status, to_status, note, created_at)
+select id, '66666666-6666-4666-8666-666666666666'::uuid, 'influencer'::public.actor_role,
+       null::public.booking_status, 'ACCEPTED'::public.booking_status,
+       'Brief diterima.', accepted_at
+  from public.bookings where code = 'CLB-2026-0011'
+union all
+select id, '99999999-9999-4999-8999-999999999999'::uuid, 'umkm'::public.actor_role,
+       'ACCEPTED'::public.booking_status, 'FUNDED'::public.booking_status,
+       'Dana ditahan escrow.', funded_at
+  from public.bookings where code = 'CLB-2026-0011'
+union all
+select id, '66666666-6666-4666-8666-666666666666'::uuid, 'influencer'::public.actor_role,
+       'FUNDED'::public.booking_status, 'SUBMITTED'::public.booking_status,
+       'Konten ronde 1 dikirim.', submitted_at
+  from public.bookings where code = 'CLB-2026-0011'
+union all
+select id, '66666666-6666-4666-8666-666666666666'::uuid, 'influencer'::public.actor_role,
+       'SUBMITTED'::public.booking_status, 'DISPUTED'::public.booking_status,
+       'Sengketa dibuka: permintaan revisi di luar brief setelah kuota habis.', submitted_at + interval '1 day'
+  from public.bookings where code = 'CLB-2026-0011'
+union all
+select id, '77777777-7777-4777-8777-777777777777'::uuid, 'influencer'::public.actor_role,
+       null::public.booking_status, 'ACCEPTED'::public.booking_status,
+       'Brief diterima.', accepted_at
+  from public.bookings where code = 'CLB-2026-0012'
+union all
+select id, '99999999-9999-4999-8999-999999999999'::uuid, 'umkm'::public.actor_role,
+       'ACCEPTED'::public.booking_status, 'FUNDED'::public.booking_status,
+       'Dana ditahan escrow.', funded_at
+  from public.bookings where code = 'CLB-2026-0012'
+union all
+select id, '77777777-7777-4777-8777-777777777777'::uuid, 'influencer'::public.actor_role,
+       'FUNDED'::public.booking_status, 'SUBMITTED'::public.booking_status,
+       'Konten ronde 1 dikirim.', submitted_at
+  from public.bookings where code = 'CLB-2026-0012'
+union all
+select id, '99999999-9999-4999-8999-999999999999'::uuid, 'umkm'::public.actor_role,
+       'SUBMITTED'::public.booking_status, 'DISPUTED'::public.booking_status,
+       'Sengketa dibuka: konten belum tayang melewati jadwal.', submitted_at + interval '1 day'
+  from public.bookings where code = 'CLB-2026-0012'
+union all
+select id, '88888888-8888-4888-8888-888888888888'::uuid, 'influencer'::public.actor_role,
+       null::public.booking_status, 'ACCEPTED'::public.booking_status,
+       'Brief diterima.', accepted_at
+  from public.bookings where code = 'CLB-2026-0013'
+union all
+select id, '99999999-9999-4999-8999-999999999999'::uuid, 'umkm'::public.actor_role,
+       'ACCEPTED'::public.booking_status, 'FUNDED'::public.booking_status,
+       'Dana ditahan escrow.', funded_at
+  from public.bookings where code = 'CLB-2026-0013'
+union all
+select id, '88888888-8888-4888-8888-888888888888'::uuid, 'influencer'::public.actor_role,
+       'FUNDED'::public.booking_status, 'SUBMITTED'::public.booking_status,
+       'Konten kampanye dikirim.', submitted_at
+  from public.bookings where code = 'CLB-2026-0013'
+union all
+select id, '99999999-9999-4999-8999-999999999999'::uuid, 'umkm'::public.actor_role,
+       'SUBMITTED'::public.booking_status, 'DISPUTED'::public.booking_status,
+       'Sengketa dibuka: hasil dinilai belum sesuai kesepakatan.', submitted_at + interval '2 days'
+  from public.bookings where code = 'CLB-2026-0013'
+union all
+select id, '44444444-4444-4444-8444-444444444444'::uuid, 'admin'::public.actor_role,
+       'DISPUTED'::public.booking_status, 'COMPLETED'::public.booking_status,
+       'Diputuskan: Bagi Dana 70% kreator / 30% UMKM.', completed_at
+  from public.bookings where code = 'CLB-2026-0013';
+
+-- The disputes themselves. due_at is in the past for the overdue OPEN case and
+-- in the future for NEED_INFO, whose paused_at records when the clock stopped.
+insert into public.disputes (code, booking_id, reason, opened_by, status, due_at, paused_at,
+                             decision, creator_share_percent, decision_note, decided_by, decided_at, created_at)
+select 'DSP-2026-0011', id,
+       'UMKM meminta penggantian konten penuh di luar brief setelah kuota revisi habis; kreator menolak mengulang tanpa kesepakatan baru.',
+       'influencer'::public.party_role, 'OPEN'::public.dispute_status,
+       now() - interval '2 days', null::timestamptz, null::public.dispute_decision,
+       null::integer, null::text, null::uuid, null::timestamptz, now() - interval '5 days'
+  from public.bookings where code = 'CLB-2026-0011'
+union all
+select 'DSP-2026-0012', id,
+       'Konten belum tayang melewati jadwal yang disepakati; UMKM meminta kepastian tanggal tayang.',
+       'umkm'::public.party_role, 'NEED_INFO'::public.dispute_status,
+       now() + interval '2 days', now() - interval '1 day', null::public.dispute_decision,
+       null::integer, null::text, null::uuid, null::timestamptz, now() - interval '3 days'
+  from public.bookings where code = 'CLB-2026-0012'
+union all
+select 'DSP-2026-0013', id,
+       'Kualitas konten dinilai belum sesuai kesepakatan; kedua pihak sepakat menyelesaikan lewat mediasi.',
+       'umkm'::public.party_role, 'RESOLVED'::public.dispute_status,
+       now() - interval '15 days', null, 'SPLIT'::public.dispute_decision, 70,
+       'Konten diterima sebagian. Dana dibagi 70% ke kreator, 30% kembali ke UMKM.',
+       '44444444-4444-4444-8444-444444444444'::uuid, now() - interval '16 days', now() - interval '22 days'
+  from public.bookings where code = 'CLB-2026-0013';
+
+-- Mediation Q&A. The open case has an answered exchange; the NEED_INFO case has
+-- one unanswered question, which is what keeps it paused. The decided case keeps
+-- the exchange that preceded the split.
+insert into public.dispute_infos (dispute_id, asked_by, target_role, question, answer, answered_by, answered_at, created_at)
+select d.id, '44444444-4444-4444-8444-444444444444'::uuid, 'influencer'::public.party_role,
+       'Apakah permintaan penggantian masih dalam cakupan brief awal?',
+       'Tidak. Permintaan mengubah gaya penyajian total, di luar brief.',
+       '66666666-6666-4666-8666-666666666666'::uuid, now() - interval '3 days', now() - interval '4 days'
+  from public.disputes d where d.code = 'DSP-2026-0011'
+union all
+select d.id, '44444444-4444-4444-8444-444444444444'::uuid, 'umkm'::public.party_role,
+       'Mohon konfirmasi tanggal tayang final yang disepakati kedua pihak.',
+       null, null, null, now() - interval '2 days'
+  from public.disputes d where d.code = 'DSP-2026-0012'
+union all
+select d.id, '44444444-4444-4444-8444-444444444444'::uuid, 'umkm'::public.party_role,
+       'Berapa bagian konten yang sudah memenuhi brief?',
+       'Bagian pembuka dan penutup sudah sesuai; bagian tengah belum.',
+       '99999999-9999-4999-8999-999999999999'::uuid, now() - interval '18 days', now() - interval '19 days'
+  from public.disputes d where d.code = 'DSP-2026-0013';
+
+-- ----------------------------------------------------------------------------
 -- Chat
 --
 -- One conversation per booking, created the moment the booking is made (the same
@@ -484,6 +659,46 @@ select c.id, '55555555-5555-4555-8555-555555555555'::uuid,
   from public.conversations c join public.bookings b on b.id = c.booking_id
  where b.code = 'CLB-2026-0007';
 
+-- The three disputed bookings each get a short exchange, so the operator's case
+-- view has both sides' words. The NEED_INFO case's last message is the creator
+-- waiting on the business, which is exactly what the operator asked about.
+insert into public.messages (conversation_id, sender_id, body, sent_at, read_at)
+select c.id, '66666666-6666-4666-8666-666666666666'::uuid,
+       'Konten ronde 1 sudah mengikuti brief awal ya kak.',
+       b.created_at + interval '8 days', b.created_at + interval '8 days 2 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0011'
+union all
+select c.id, '99999999-9999-4999-8999-999999999999'::uuid,
+       'Kami butuh konten diulang total, bukan sekadar revisi kecil.',
+       b.created_at + interval '8 days 3 hours', null::timestamptz
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0011'
+union all
+select c.id, '99999999-9999-4999-8999-999999999999'::uuid,
+       'Jadwal tayang sudah lewat, mohon kepastian tanggalnya.',
+       b.created_at + interval '8 days', b.created_at + interval '8 days 1 hour'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0012'
+union all
+select c.id, '77777777-7777-4777-8777-777777777777'::uuid,
+       'Draf sudah siap; saya menunggu konfirmasi jadwal tayang dari pihak UMKM.',
+       b.created_at + interval '9 days', null::timestamptz
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0012'
+union all
+select c.id, '88888888-8888-4888-8888-888888888888'::uuid,
+       'Kampanye sudah tayang, terima kasih untuk kerja samanya.',
+       b.created_at + interval '12 days', b.created_at + interval '12 days 2 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0013'
+union all
+select c.id, '99999999-9999-4999-8999-999999999999'::uuid,
+       'Terima kasih, hasilnya membantu penjualan kami.',
+       b.created_at + interval '12 days 3 hours', b.created_at + interval '12 days 4 hours'
+  from public.conversations c join public.bookings b on b.id = c.booking_id
+ where b.code = 'CLB-2026-0013';
+
 -- ----------------------------------------------------------------------------
 -- Bridge alignment
 --
@@ -534,5 +749,7 @@ union all select 'booking_events',  count(*) from public.booking_events
 union all select 'reviews',         count(*) from public.reviews
 union all select 'conversations',   count(*) from public.conversations
 union all select 'messages',        count(*) from public.messages
+union all select 'disputes',        count(*) from public.disputes
+union all select 'dispute_infos',   count(*) from public.dispute_infos
 union all select 'auth_users',      count(*) from auth.users where email like '%@kolab.id'
 order by 1;

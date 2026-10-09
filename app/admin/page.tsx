@@ -14,11 +14,7 @@ import { DataTable, type TableColumn } from "@/components/DataTable";
 import { KpiCard } from "@/components/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatRupiah } from "@/lib/format";
-import {
-  kasusKpis,
-  kasusTerbuka,
-  type Kasus,
-} from "@/components/kasus-fixture";
+import { adminKpis, getAdminCases, type AdminCase } from "@/lib/data/disputes";
 
 export const dynamic = "force-dynamic";
 
@@ -28,30 +24,28 @@ export const metadata: Metadata = {
     "Ringkasan kasus sengketa Kolab.id — pantau antrian dan dana yang ditahan.",
 };
 
-const COLUMNS: TableColumn<Kasus>[] = [
+const COLUMNS: TableColumn<AdminCase>[] = [
   {
     key: "kode",
     header: "Kode",
-    cell: (k) => (
-      <span className="font-semibold text-neutral-900">{k.bookingKode}</span>
-    ),
+    cell: (k) => <span className="font-semibold text-neutral-900">{k.bookingCode}</span>,
   },
   {
     key: "umkm",
     header: "UMKM",
-    cell: (k) => <span className="text-neutral-700">{k.umkm}</span>,
+    cell: (k) => <span className="text-neutral-700">{k.umkmName}</span>,
   },
   {
     key: "kreator",
     header: "Kreator",
-    cell: (k) => <span className="text-neutral-700">{k.kreator}</span>,
+    cell: (k) => <span className="text-neutral-700">{k.creatorName}</span>,
   },
   {
     key: "nominal",
     header: "Nominal",
     cell: (k) => (
       <span className="font-medium text-neutral-900">
-        {formatRupiah(k.nominal)}
+        {formatRupiah(k.amount)}
       </span>
     ),
   },
@@ -59,7 +53,7 @@ const COLUMNS: TableColumn<Kasus>[] = [
     key: "batas",
     header: "Batas Keputusan",
     cell: (k) => (
-      <span className="text-neutral-600">{formatDate(k.batasKeputusan)}</span>
+      <span className="text-neutral-600">{formatDate(k.dueAt)}</span>
     ),
   },
   {
@@ -68,7 +62,7 @@ const COLUMNS: TableColumn<Kasus>[] = [
     cell: (k) => (
       <span className="inline-flex items-center gap-2">
         <StatusBadge status={k.status} />
-        {k.terlambat && k.status !== "RESOLVED" && (
+        {k.overdue && k.status !== "RESOLVED" && (
           <span className="inline-flex items-center rounded-full bg-error-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-error-700">
             Terlambat
           </span>
@@ -88,8 +82,11 @@ const COLUMNS: TableColumn<Kasus>[] = [
 ];
 
 export default async function AdminDashboardPage() {
-  const kpi = kasusKpis();
-  const queue = kasusTerbuka().slice(0, 5);
+  const cases = await getAdminCases();
+  const kpi = adminKpis(cases);
+  const queue = cases
+    .filter((c) => c.status !== "RESOLVED")
+    .slice(0, 5);
 
   return (
     <AdminShell>
@@ -164,7 +161,7 @@ export default async function AdminDashboardPage() {
             columns={COLUMNS}
             rows={queue}
             keyOf={(k) => k.id}
-            isLate={(k) => k.terlambat && k.status !== "RESOLVED"}
+            isLate={(k) => k.overdue && k.status !== "RESOLVED"}
             emptyIcon={Scale}
             emptyTitle="Tidak ada kasus terbuka"
             emptyDescription="Kasus sengketa baru akan muncul di sini setelah diajukan UMKM atau kreator."

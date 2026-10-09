@@ -65,14 +65,14 @@ foreach ($t in @('categories', 'umkms', 'influencers', 'packages', 'reviews')) {
 
 Write-Output ""
 Write-Output "=== anonymous reads: everything scoped is closed ==="
-foreach ($t in @('bookings', 'payments', 'deliveries', 'booking_events', 'revision_requests', 'resolution_offers', 'profiles', 'conversations', 'messages')) {
+foreach ($t in @('bookings', 'payments', 'deliveries', 'booking_events', 'revision_requests', 'resolution_offers', 'profiles', 'conversations', 'messages', 'disputes', 'dispute_infos')) {
   $n = Count-Rows $t $null
   Check "anon gets nothing from $t" ($n -eq 0) "$n rows"
 }
 
 Write-Output ""
 Write-Output "=== anon reads: the still-deferred tables deny by default ==="
-foreach ($t in @('notifications', 'disputes', 'dispute_infos')) {
+foreach ($t in @('notifications')) {
   $n = Count-Rows $t $null
   Check "anon gets nothing from $t" ($n -eq 0) "$n rows"
 }
@@ -106,6 +106,8 @@ Check 'siti sees no booking event' ((Count-Rows 'booking_events' $siti) -eq 0) '
 Check 'siti sees no revision request' ((Count-Rows 'revision_requests' $siti) -eq 0) '0 rows'
 Check 'siti sees no message' ((Count-Rows 'messages' $siti) -eq 0) '0 rows'
 Check 'siti sees no conversation' ((Count-Rows 'conversations' $siti) -eq 0) '0 rows'
+Check 'siti sees no dispute' ((Count-Rows 'disputes' $siti) -eq 0) '0 rows'
+Check 'siti sees no dispute info' ((Count-Rows 'dispute_infos' $siti) -eq 0) '0 rows'
 
 Write-Output ""
 Write-Output "=== profiles: your own row, never anyone else's ==="
@@ -117,11 +119,12 @@ $mine = Count-Rows 'profiles' $siti 'user_id=eq.00000000-0000-4000-8000-00000000
 Check "siti cannot read another account's profile by guessing its id" ($mine -eq 0) "$mine rows"
 
 Write-Output ""
-Write-Output "=== admin is not a party to any booking, so sees none ==="
-# Deliberate, and worth stating: profiles_own_read lets an admin read its own
-# profile but nothing links an admin to a booking, and the party policies key on
-# umkm_id/influencer_id only. Admin visibility arrives with the dispute policies.
-Check 'admin sees no booking yet' ((Count-Rows 'bookings' $admin) -eq 0) '0 rows'
+Write-Output "=== admin dispute visibility ==="
+Check 'admin sees all disputes' ((Count-Rows 'disputes' $admin) -eq 3) '3 rows'
+Check 'admin sees all dispute infos' ((Count-Rows 'dispute_infos' $admin) -eq 3) '3 rows'
+Check 'admin sees disputed bookings only' ((Count-Rows 'bookings' $admin) -eq 3) '3 rows'
+Check 'admin sees payments for disputed bookings' ((Count-Rows 'payments' $admin) -eq 3) '3 rows'
+Check 'admin sees messages for disputed bookings' ((Count-Rows 'messages' $admin) -eq 6) '6 rows'
 
 Write-Output ""
 Write-Output "=== writes are refused outright, with 42501 ==="
@@ -186,9 +189,11 @@ $after = @(
   "bookings="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.bookings" 2>$null).Trim(),
   "profiles="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.profiles" 2>$null).Trim(),
   "conversations=" + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.conversations" 2>$null).Trim(),
-  "messages="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.messages" 2>$null).Trim()
+  "messages="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.messages" 2>$null).Trim(),
+  "disputes="  + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.disputes" 2>$null).Trim(),
+  "dispute_infos=" + (docker.exe exec -i supabase_db_projeklomba_umkm psql -U postgres -d postgres -t -A -c "select count(*) from public.dispute_infos" 2>$null).Trim()
 ) -join ' '
-Check 'row counts are untouched' ($after -match 'umkms=4' -and $after -match 'influencers=4' -and $after -match 'bookings=2' -and $after -match 'profiles=9' -and $after -match 'conversations=2' -and $after -match 'messages=7') $after
+Check 'row counts are untouched' ($after -match 'umkms=4' -and $after -match 'influencers=4' -and $after -match 'bookings=5' -and $after -match 'profiles=9' -and $after -match 'conversations=5' -and $after -match 'messages=13' -and $after -match 'disputes=3' -and $after -match 'dispute_infos=3') $after
 
 Write-Output ""
 if ($script:failures -eq 0) { Write-Output "ALL CHECKS PASSED" } else { Write-Output "$($script:failures) CHECK(S) FAILED" }

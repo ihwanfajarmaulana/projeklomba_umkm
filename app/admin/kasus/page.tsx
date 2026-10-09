@@ -6,9 +6,11 @@ import { DataTable, type TableColumn } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatRupiah } from "@/lib/format";
 import {
-  kasusList,
-  type Kasus,
-} from "@/components/kasus-fixture";
+  filterAdminCases,
+  getAdminCases,
+  type AdminCase,
+  type AdminCaseFilter,
+} from "@/lib/data/disputes";
 import { KasusClient } from "./kasus-client";
 
 export const dynamic = "force-dynamic";
@@ -19,79 +21,62 @@ export const metadata: Metadata = {
     "Antrian kasus sengketa Kolab.id — urutkan berdasarkan batas keputusan terdekat.",
 };
 
-const FILTERS = [
+const FILTERS: readonly AdminCaseFilter[] = [
   "semua",
   "dibuka",
   "menunggu-info",
   "terlambat",
   "diputuskan",
-] as const;
-type FilterKey = (typeof FILTERS)[number];
+];
 
-function applyFilter(cases: Kasus[], filter: FilterKey): Kasus[] {
-  const sorted = [...cases].sort(
-    (a, b) =>
-      new Date(a.batasKeputusan).getTime() -
-      new Date(b.batasKeputusan).getTime(),
-  );
-  switch (filter) {
-    case "dibuka":
-      return sorted.filter((k) => k.status === "OPEN");
-    case "menunggu-info":
-      return sorted.filter((k) => k.status === "NEED_INFO");
-    case "terlambat":
-      return sorted.filter((k) => k.status !== "RESOLVED" && k.terlambat);
-    case "diputuskan":
-      return sorted.filter((k) => k.status === "RESOLVED");
-    default:
-      return sorted;
-  }
-}
-
-const COLUMNS: TableColumn<Kasus>[] = [
+const COLUMNS: TableColumn<AdminCase>[] = [
   {
     key: "kode",
     header: "Kode Booking",
     cell: (k) => (
-      <span className="font-semibold text-neutral-900">{k.bookingKode}</span>
+      <span className="font-semibold text-neutral-900">{k.bookingCode}</span>
     ),
   },
   {
     key: "umkm",
     header: "UMKM",
-    cell: (k) => <span className="text-neutral-700">{k.umkm}</span>,
+    cell: (k) => <span className="text-neutral-700">{k.umkmName}</span>,
   },
   {
     key: "kreator",
     header: "Kreator",
-    cell: (k) => <span className="text-neutral-700">{k.kreator}</span>,
+    cell: (k) => <span className="text-neutral-700">{k.creatorName}</span>,
   },
   {
     key: "nominal",
     header: "Nominal",
     cell: (k) => (
       <span className="font-medium text-neutral-900">
-        {formatRupiah(k.nominal)}
+        {formatRupiah(k.amount)}
       </span>
     ),
   },
   {
     key: "dibuka-oleh",
     header: "Dibuka Oleh",
-    cell: (k) => <span className="text-neutral-600">{k.dibukaOleh}</span>,
+    cell: (k) => (
+      <span className="text-neutral-600">
+        {k.openedBy === "umkm" ? "UMKM" : "Kreator"}
+      </span>
+    ),
   },
   {
     key: "dibuka-pada",
     header: "Dibuka Pada",
     cell: (k) => (
-      <span className="text-neutral-600">{formatDate(k.dibukaPada)}</span>
+      <span className="text-neutral-600">{formatDate(k.createdAt)}</span>
     ),
   },
   {
     key: "batas",
     header: "Batas Keputusan",
     cell: (k) => (
-      <span className="text-neutral-600">{formatDate(k.batasKeputusan)}</span>
+      <span className="text-neutral-600">{formatDate(k.dueAt)}</span>
     ),
   },
   {
@@ -100,7 +85,7 @@ const COLUMNS: TableColumn<Kasus>[] = [
     cell: (k) => (
       <span className="inline-flex items-center gap-2">
         <StatusBadge status={k.status} />
-        {k.terlambat && k.status !== "RESOLVED" && (
+        {k.overdue && k.status !== "RESOLVED" && (
           <span className="inline-flex items-center rounded-full bg-error-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-error-700">
             Terlambat
           </span>
@@ -124,11 +109,12 @@ export default async function AdminKasusPage(
 ) {
   const searchParams = await props.searchParams;
   const rawFilter = searchParams.filter;
-  const filter: FilterKey = FILTERS.includes(rawFilter as FilterKey)
-    ? (rawFilter as FilterKey)
+  const filter: AdminCaseFilter = FILTERS.includes(rawFilter as AdminCaseFilter)
+    ? (rawFilter as AdminCaseFilter)
     : "semua";
 
-  const rows = applyFilter(kasusList, filter);
+  // `getAdminCases` already orders by the soonest deadline.
+  const rows = filterAdminCases(await getAdminCases(), filter);
 
   return (
     <AdminShell>
@@ -152,7 +138,7 @@ export default async function AdminKasusPage(
           columns={COLUMNS}
           rows={rows}
           keyOf={(k) => k.id}
-          isLate={(k) => k.terlambat && k.status !== "RESOLVED"}
+          isLate={(k) => k.overdue && k.status !== "RESOLVED"}
           emptyIcon={SearchX}
           emptyTitle="Tidak ada kasus dengan filter ini"
           emptyDescription="Kasus sengketa baru akan muncul di sini setelah diajukan oleh UMKM atau kreator."
@@ -161,8 +147,8 @@ export default async function AdminKasusPage(
 
       <p className="mt-3 text-xs text-neutral-500">
         <Scale className="mr-1 inline h-3.5 w-3.5 align-middle" />
-        Batas keputusan = 3 hari kerja sejak kasus dibuka; jam berhenti selama
-        kasus Menunggu Info.
+        Batas keputusan = 3 hari sejak kasus dibuka; jam berhenti selama kasus
+        Menunggu Info.
       </p>
     </AdminShell>
   );

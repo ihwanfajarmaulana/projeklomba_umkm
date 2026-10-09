@@ -9,9 +9,12 @@ import {
   getUserContext,
   requireInfluencer,
   requireParty,
+  requireRole,
   requireUmkm,
 } from "@/lib/auth";
 import { getBookingById, hasReviewed } from "@/lib/data/bookings";
+import { getAdminCase, getDisputeForBooking } from "@/lib/data/disputes";
+import type { DisputeDecision } from "@/lib/data/disputes";
 import type { AuthFormState } from "@/lib/form-state";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -1102,9 +1105,16 @@ export async function submitReview(formData: FormData): Promise<void> {
   const dashboardHref = DASHBOARD_BY_ROLE[account.role];
 
   const booking = await getBookingById(bookingId);
-  if (!booking || booking.status !== "COMPLETED") {
-    redirect(dashboardHref);
-  }
+  if (!booking) redirect(dashboardHref);
+
+  // A completed collaboration is reviewable. So is one the operator ended with a
+  // refund: the decision closes it even though its status is CANCELLED, and the
+  // spec opens the review for every dispute outcome.
+  const reviewable =
+    booking.status === "COMPLETED" ||
+    (booking.status === "CANCELLED" &&
+      (await getDisputeForBooking(booking.id))?.status === "RESOLVED");
+  if (!reviewable) redirect(dashboardHref);
 
   // Hanya pihak yang terlibat dalam booking yang boleh menilai
   const isParty = isUmkm
@@ -1143,4 +1153,152 @@ export async function submitReview(formData: FormData): Promise<void> {
   revalidatePath(`/influencers/${booking.influencerId}`);
   revalidatePath("/insights");
   redirect(isUmkm ? "/dashboard?review=1" : "/dashboard/influencer?review=1");
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin: keputusan sengketa (ARCHITECTURE §5.7)                       */
+/*                                                                     */
+/* The same rule as the party actions, with a different guard: the      */
+/* operator reads the dispute through the admin session first (the      */
+/* `*_admin_dispute_read` policies admit it), then the decision is one   */
+/* RPC through the service role. `apply_booking_transition` stays the    */
+/* only writer of `bookings.status`; the function calls it internally.   */
+/* ------------------------------------------------------------------ */
+
+const ADMIN_DASHBOARD = "/admin";
+const ADMIN_KASUS = "/admin/kasus";
+
+const DISPUTE_DECISIONS: readonly DisputeDecision[] = [
+  "RELEASE_FULL",
+  "REFUND_FULL",
+  "SPLIT",
+];
+
+export async function decideDispute(formData: FormData): Promise<void> {
+  const account = await requireRole("admin");
+
+  const disputeId = Number(formData.get("disputeId"));
+  if (!Number.isInteger(disputeId) || disputeId < 1) {
+    redirect(ADMIN_KASUS);
+  }
+  const back = backTo(formData, `${ADMIN_KASUS}/${disputeId}`);
+
+  const dispute = await getAdminCase(disputeId);
+  if (!dispute) redirect(ADMIN_KASUS);
+
+  const decision = String(formData.get("decision") ?? "") as DisputeDecision;
+  if (!DISPUTE_DECISIONS.includes(decision)) {
+    redirect(`${back}?gagal=keputusan`);
+  }
+
+  const note = String(formData.get("note") ?? "").trim();
+  if (!note) redirect(`${back}?gagal=alasan`);
+
+  // Only meaningful for SPLIT; the database ignores it otherwise and validates
+  // the range for the split itself.
+  const rawPercent = Number(formData.get("percent") ?? 50);
+  const creatorShare = Number.isFinite(rawPercent)
+    ? Math.round(rawPercent)
+    : 50;
+
+  const { error } = await createAdminClient().rpc("decide_dispute", {
+    p_dispute_id: disputeId,
+    p_decision: decision,
+    p_creator_share_percent: creatorShare,
+    p_note: note,
+    p_decided_by: account.userId,
+  });
+
+  revalidatePath(ADMIN_DASHBOARD);
+  revalidatePath(ADMIN_KASUS);
+  revalidatePath(`${ADMIN_KASUS}/${disputeId}`);
+  revalidateBooking(dispute.bookingId, dispute.influencerId);
+
+  redirect(
+    error ? `${back}?gagal=${reasonFor(error)}` : `${back}?ok=diputuskan`,
+  );
+}
+
+export async function requestDisputeInfo(formData: FormData): Promise<void> {
+  const account = await requireRole("admin");
+
+  const disputeId = Number(formData.get("disputeId"));
+  if (!Number.isInteger(disputeId) || disputeId < 1) {
+    redirect(ADMIN_KASUS);
+  }
+  const back = backTo(formData, `${ADMIN_KASUS}/${disputeId}`);
+
+  const dispute = await getAdminCase(disputeId);
+  if (!dispute) redirect(ADMIN_KASUS);
+
+  const question = String(formData.get("question") ?? "").trim();
+  if (!question) redirect(`${back}?gagal=pertanyaan`);
+
+  // "both" asks each party the same question, so it is two info rows. The
+  // dispute only leaves NEED_INFO once the last of them is answered.
+  const target = String(formData.get("target") ?? "");
+  const targets: PartyRole[] =
+    target === "both"
+      ? ["umkm", "influencer"]
+      : target === "umkm" || target === "influencer"
+        ? [target]
+        : [];
+  if (targets.length === 0) redirect(`${back}?gagal=target`);
+
+  const admin = createAdminClient();
+  for (const role of targets) {
+    const { error } = await admin.rpc("request_dispute_info", {
+      p_dispute_id: disputeId,
+      p_question: question,
+      p_target_role: role,
+      p_asked_by: account.userId,
+    });
+    if (error) {
+      revalidatePath(`${ADMIN_KASUS}/${disputeId}`);
+      redirect(`${back}?gagal=${reasonFor(error)}`);
+    }
+  }
+
+  revalidatePath(ADMIN_DASHBOARD);
+  revalidatePath(ADMIN_KASUS);
+  revalidatePath(`${ADMIN_KASUS}/${disputeId}`);
+  redirect(`${back}?ok=diminta`);
+}
+
+/** A party answers the operator's question from the booking detail page. */
+export async function answerDisputeInfo(formData: FormData): Promise<void> {
+  const account = await requireParty();
+  const role = partyRole(account.role);
+  if (!role) redirect("/dashboard");
+
+  const booking = await fetchOwned(formData);
+  const isParty =
+    booking &&
+    (role === "umkm"
+      ? booking.umkmId === account.umkmId
+      : booking.influencerId === account.influencerId);
+  if (!isParty) redirect(`${DASHBOARD_BY_ROLE[account.role]}?gagal=akses`);
+
+  const base = role === "umkm" ? UMKM_RIWAYAT : CREATOR_RIWAYAT;
+  const back = backTo(formData, `${base}/${booking.id}`);
+
+  const infoId = Number(formData.get("infoId"));
+  if (!Number.isInteger(infoId) || infoId < 1) {
+    redirect(`${back}?gagal=pertanyaan`);
+  }
+  const answer = String(formData.get("answer") ?? "").trim();
+  if (!answer) redirect(`${back}?gagal=jawaban`);
+
+  const { error } = await createAdminClient().rpc("answer_dispute_info", {
+    p_info_id: infoId,
+    p_actor_role: role,
+    p_answer: answer,
+    p_answered_by: account.userId,
+  });
+
+  revalidateBooking(booking.id, booking.influencerId);
+  revalidatePath(ADMIN_DASHBOARD);
+  revalidatePath(ADMIN_KASUS);
+
+  redirect(error ? `${back}?gagal=${reasonFor(error)}` : `${back}?ok=dijawab`);
 }
