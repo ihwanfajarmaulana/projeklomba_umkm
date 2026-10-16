@@ -197,8 +197,10 @@ const GUARDS = [
   "/review/1",
 ];
 
-// Peran seed. `pages` harus terbuka; `forbidden` harus TIDAK memperlihatkan
-// penanda peran lain (isi peran lain bocor kalau penanda itu ditemukan).
+// Peran seed. `pages` harus terbuka. `forbidden` berisi rute yang tidak boleh
+// terbuka bagi peran ini: `to` = tujuan pengalihan yang benar, `marker` = teks
+// isi halaman tersebut yang hanya ada bila halamannya benar-benar dirender
+// untuk pemiliknya (sudah diverifikasi) — jadi kehadirannya berarti bocor.
 const ROLES = [
   {
     label: "umkm",
@@ -208,13 +210,15 @@ const ROLES = [
       { path: "/dashboard/riwayat" },
       { path: "/influencers", body: "Cari Kreator" },
     ],
-    forbidden: [{ path: "/admin", marker: "Dashboard Admin" }],
+    forbidden: [{ path: "/admin", to: "/dashboard", marker: "Kasus Terbuka" }],
   },
   {
     label: "influencer",
     email: "rara@kolab.id",
     pages: [{ path: "/dashboard/influencer", title: "Dashboard Kreator" }],
-    forbidden: [{ path: "/dashboard", marker: "Dashboard UMKM" }],
+    forbidden: [
+      { path: "/dashboard", to: "/dashboard/influencer", marker: "Total Pengajuan" },
+    ],
   },
   {
     label: "admin",
@@ -246,6 +250,22 @@ function locationPath(location) {
   } catch {
     return location;
   }
+}
+
+/**
+ * Target pengalihan yang dikirim Next saat `redirect()` dilempar.
+ *
+ * Saat metadata halaman sudah sempat ter-flush ke header, Next tidak bisa lagi
+ * menjawab 307, jadi ia mengirim pengalihan ke sisi klien dan menaruh tujuannya
+ * di digest error: `NEXT_REDIRECT;replace;/dashboard;307;`. Menangkap keduanya
+ * berarti pemeriksaan tetap benar walau nanti pengalihannya berubah jadi 307
+ * sungguhan (mis. guard dipindah ke layout).
+ */
+function redirectTarget(body) {
+  const digest = body.match(
+    /NEXT_REDIRECT;(?:replace|redirect);([^;"]+);(?:307|308);/,
+  );
+  return digest ? digest[1] : "";
 }
 
 // ------------------------------------------------------------------ jalan ---
@@ -319,13 +339,19 @@ async function main() {
 
       for (const deny of role.forbidden) {
         const result = await get(deny.path, cookie);
-        // Boleh 200 (pengalihan sisi klien) atau 307; yang penting isi peran
-        // lain tidak pernah terkirim.
-        const ok = !result.body.includes(deny.marker);
+        // Dua hal harus benar sekaligus: peran ini dikirim ke `deny.to`, dan
+        // isi halaman yang dilarang tidak ikut terkirim. Pengalihannya bisa
+        // datang sebagai 307, atau sebagai 200 + pengalihan sisi klien bila
+        // metadata sudah ter-flush lebih dulu.
+        const target = redirectTarget(result.body) || locationPath(result.location);
+        const reachable = result.status === 307 || result.status === 200;
+        const redirected = reachable && target === deny.to;
+        const clean = !result.body.includes(deny.marker);
         report(
           `GET ${deny.path} (ditolak)`,
-          ok,
-          `${result.status} tanpa "${deny.marker}"`,
+          redirected && clean,
+          `${result.status} -> ${target || "(tanpa redirect)"}` +
+            (clean ? ` tanpa "${deny.marker}"` : ` BOCOR: "${deny.marker}"`),
         );
       }
     }
