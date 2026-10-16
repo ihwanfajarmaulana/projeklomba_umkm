@@ -2,7 +2,7 @@
 
 Technical documentation for developers working on Kolab.id. For the product overview see [README.md](./README.md); for information architecture and task flows see [ARCHITECTURE.md](./ARCHITECTURE.md); for design tokens and components see [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md).
 
-> **Migration status:** the data layer has moved to Supabase/Postgres and Supabase Auth. `rls-access-control` and `auth-session` are applied and archived; the catalog/booking core loop is in progress. Where this guide still says "target" or "pending", treat §6, §8 and §9 as the current truth. No local SQLite, no mock cookie.
+> **Migration status:** complete. The data layer runs on Supabase/Postgres and Supabase Auth; the SQLite store and the mock `kolab_session` cookie are gone from the app. The catalog → booking → payment → review loop, chat, and the admin dispute queue are all built and reachable with the seeded accounts. The sections below describe what the code does today.
 
 ## 1. Tech Stack
 
@@ -103,7 +103,7 @@ Notes:
 - Deploy as a Node.js app (Vercel is the path of least resistance for Next.js). Static export is not possible — pages read the DB at runtime.
 - Set the same three env vars on the host. Never use a `NEXT_PUBLIC_` prefix for the secret key.
 - No local DB file anymore: the SQLite `database is locked` / WAL / writable-filesystem problems disappear. Postgres handles concurrent writers.
-- Enable Row Level Security (RLS) policies before launch (see §8) so the publishable key cannot write arbitrarily.
+- Keep Row Level Security on in every environment (see §8): the publishable key can read the catalog and nothing more, so every write goes through the service role.
 
 ### Demo mode (competition presentation)
 
@@ -148,7 +148,7 @@ runs such a build, so the default smoke run skips this check on purpose. As a bo
 same run visits every route once, so `next dev` has already compiled them before the
 first click — useful when the first thing a judge sees should not be a slow page.
 
-## 6. Project Structure (Target)
+## 6. Project Structure
 
 ```
 app/
@@ -168,22 +168,28 @@ app/
   review/[bookingId]/     # Two-way rating & review form (after COMPLETED booking or dispute decision)
   insights/               # Market price insights per category
   dashboard/
-    influencer/           # Creator dashboard (chat is live; paket/ and shell planned — see ARCHITECTURE.md §4)
+    influencer/           # Creator dashboard: requests, income, chat, paket, history (see ARCHITECTURE.md §4)
   admin/                  # Admin: dashboard, Antrian Kasus, Detail Kasus, profile (see ARCHITECTURE.md §5)
   login/                  # Login / signup pages (Supabase Auth, see §9)
-components/               # Navbar, Footer, DashboardShell (sidebar+header), UmkmShell (server wrapper),
+  loading.tsx             # Loading skeletons per route level
+  error.tsx / global-error.tsx / not-found.tsx   # Error boundaries + custom 404 UI
+components/               # Navbar, Footer, DashboardShell / UmkmShell / AdminShell / InfluencerShell
+                          # (sidebar+header wrappers), Skeleton (loading shells),
                           # NotificationBell, BookingHistoryList, StarRating, etc.
 lib/
-  supabase/
-    client.ts             # Browser client (createBrowserClient) — "use client" only
-    server.ts             # Server client (createServerClient + cookies) — Server Components/Actions
-    database.types.ts     # Generated types (npm run db:types). Replaces hand-written types where applicable
   data/                   # Postgres query modules — catalog.ts (public reads),
-                          # bookings.ts (party-scoped reads), palette.ts (category colours)
+                          # bookings.ts (party-scoped reads), offers.ts, chat.ts,
+                          # disputes.ts, palette.ts (category colours)
   auth.ts                 # Session/role helpers on top of supabase.auth.getUser() (replaces cookie mock)
   format.ts               # Rupiah / number / date formatting
   types.ts                # Shared TypeScript types
-middleware.ts             # Auth session refresh (updateSession) + route guards
+utils/supabase/
+  client.ts               # Browser client (createBrowserClient) — "use client" only
+  server.ts               # Server client (createServerClient + cookies) — Server Components/Actions
+  admin.ts                # Service-role client — server-only (every write)
+  middleware.ts           # resolveSession(): session refresh, called from proxy.ts
+  database.types.ts       # Generated types (npm run db:types)
+proxy.ts                  # Route protection: session refresh + anonymous/auth redirects (Next 16 renamed middleware -> proxy)
 supabase/
   migrations/             # Versioned SQL schema. Postgres is the app's only store;
                           # lib/db.ts + lib/seed.ts + scripts/seed.ts remain only to
@@ -233,12 +239,17 @@ export async function createClient() {
 ```
 
 ```ts
-// middleware.ts — refreshes the session cookie on every request.
-// Without this, users get randomly logged out.
-import { updateSession } from "@/utils/supabase/middleware";
+// proxy.ts — refreshes the session cookie and guards protected routes.
+// Next 16 renamed `middleware` to `proxy`; `config.matcher` still selects paths.
+import { type NextRequest, NextResponse } from "next/server";
+import { resolveSession } from "@/utils/supabase/middleware";
 
-export async function middleware(request: Request) {
-  return updateSession(request);
+export async function proxy(request: NextRequest) {
+  const { response, user } = await resolveSession(request);
+  if (!user && isProtected(request.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  return response;
 }
 
 export const config = {
@@ -262,10 +273,10 @@ export const config = {
 | `/dashboard/chat` | UMKM chat list, one conversation per booking, read from the database | Supabase session + `umkm` role |
 | `/dashboard/influencer` | Creator dashboard: incoming requests, status updates, income | Supabase session + `influencer` role |
 | `/dashboard/influencer/chat` | Creator chat list, one conversation per booking, read from the database | Supabase session + `influencer` role |
-| `/dashboard/influencer/paket` | (planned) `Paket & Harga` management — see ARCHITECTURE.md §4.6 | Supabase session + `influencer` role |
-| `/admin` | (planned) Admin dashboard: case queue summary — see ARCHITECTURE.md §5 | Supabase session + `admin` role |
-| `/admin/kasus` | (planned) `Antrian Kasus` full list — see ARCHITECTURE.md §5.7 | Supabase session + `admin` role |
-| `/admin/kasus/[id]` | (planned) `Detail Kasus` + decision panel — see ARCHITECTURE.md §5.7 | Supabase session + `admin` role |
+| `/dashboard/influencer/paket` | Creator `Paket & Harga` management — see ARCHITECTURE.md §4.6 | Supabase session + `influencer` role |
+| `/admin` | Admin dashboard: case queue summary — see ARCHITECTURE.md §5 | Supabase session + `admin` role |
+| `/admin/kasus` | `Antrian Kasus` full list — see ARCHITECTURE.md §5.7 | Supabase session + `admin` role |
+| `/admin/kasus/[id]` | `Detail Kasus` + decision panel — see ARCHITECTURE.md §5.7 | Supabase session + `admin` role |
 | `/review/[bookingId]` | Two-way rating after `COMPLETED` booking or dispute decision | Involved party only |
 | `/insights` | Market price standards per category (min/avg/max) | Public |
 | `/login` | Login (Supabase Auth) | Public (redirects away if already signed in) |
@@ -273,11 +284,11 @@ export const config = {
 | `/onboarding` | Role picker + business/creator details (creates `profiles` row) | Signed-in users without a profile |
 | `/auth/callback` | OAuth code-exchange callback (no UI) | Public |
 
-Guards move from parsing the mock cookie to `supabase.auth.getUser()` in Server Components/Actions plus middleware redirects.
+Every guard resolves the caller with `supabase.auth.getUser()` in Server Components/Actions; anonymous requests to a protected prefix are redirected to `/login?next=…` in `proxy.ts`.
 
 ## 8. Database Schema (Postgres)
 
-The schema lives in versioned migrations (`supabase/migrations/0001_init.sql`), not in app code. It implements the product spec in ARCHITECTURE.md §2 (escrow lifecycle) and §6 (data model): Postgres port of the prototype tables, plus payment/revision/dispute/chat/notification tables.
+The schema lives in versioned migrations under `supabase/migrations/` (initial schema, RLS baseline, starting-price trigger, booking package snapshots, lifecycle, reviews, resolution offers, chat, admin disputes), not in app code. It implements the product spec in ARCHITECTURE.md §2 (escrow lifecycle) and §6 (data model): Postgres port of the prototype tables, plus payment/revision/dispute/chat/notification tables.
 
 ```sql
 create table if not exists influencers (
@@ -818,7 +829,7 @@ inner quotes from `node -e`, which is why every SQL string goes through a file.
 | Symptom | Cause / Fix |
 | --- | --- |
 | Queries return zero rows with no error | RLS policy missing/deny. Check policies in Dashboard → Authentication → Policies, or test with the service-role key to confirm it's RLS, not the query |
-| Users randomly logged out | `middleware.ts` session refresh missing or matcher excluding routes. Ensure `updateSession` runs on every non-static request |
+| Users randomly logged out | `proxy.ts` session refresh missing or matcher excluding routes. Ensure `resolveSession` runs on every non-static request |
 | `NEXT_PUBLIC_SUPABASE_* is undefined` | `.env.local` missing or dev server not restarted after editing it |
 | Seed/auth-admin calls fail with 401/403 | Publishable key used where the secret key is required (or vice versa). Seeding and user-admin scripts must use `SUPABASE_SERVICE_ROLE_KEY`, server-side only |
 | Signup succeeds but user can't log in | "Confirm email" is on and the inbox wasn't confirmed. Turn it off for the dev project or confirm the user in the Dashboard |
