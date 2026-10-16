@@ -21,6 +21,7 @@
 //   SMOKE_NO_DATA=1 npm run smoke     # lewati halaman berdata (mis. di CI
 //                                     # tanpa Supabase sungguhan)
 //   SMOKE_NO_AUTH=1 npm run smoke     # lewati bagian peran
+//   SMOKE_EXPECT_DEMO=1 npm run smoke # pastikan tombol demo tampil (cek pra-presentasi)
 //
 // Kredensial diambil dari .env.local (URL + publishable key) dan dari akun
 // seed di supabase/seed.sql. Tidak ada rahasia yang dicetak.
@@ -36,6 +37,10 @@ const BASE = (process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/
 const SKIP_DATA = process.env.SMOKE_NO_DATA === "1";
 const SKIP_AUTH = process.env.SMOKE_NO_AUTH === "1";
 const PASSWORD = process.env.SMOKE_PASSWORD ?? "kolab12345";
+// Opt-in: pastikan /login merender tombol demo. Sengaja tidak default, karena
+// build produksi memang menyembunyikannya (app/login/page.tsx) — dinyalakan
+// tepat sebelum presentasi: `SMOKE_EXPECT_DEMO=1 npm run smoke`.
+const EXPECT_DEMO = process.env.SMOKE_EXPECT_DEMO === "1";
 
 // ------------------------------------------------------------------ .env.local ---
 
@@ -179,6 +184,16 @@ const PUBLIC = [
   { path: "/insights", expect: 200, body: "Wawasan Harga", data: true },
   { path: "/login", expect: 200, body: "Masuk ke" },
   { path: "/signup", expect: 200, body: "Buat akun" },
+  // Tombol demo hanya dirender di luar produksi. Ketika SMOKE_EXPECT_DEMO=1,
+  // ketiadaannya dianggap gagal — cara cepat memastikan server yang dipakai
+  // untuk presentasi memang membawa jalan masuk satu-klik.
+  {
+    path: "/login",
+    label: "GET /login (demo)",
+    expect: 200,
+    body: "Masuk sebagai UMKM",
+    demo: true,
+  },
   {
     path: "/halaman-tidak-ada-xyz",
     expect: 404,
@@ -275,6 +290,7 @@ async function main() {
   console.log(`base: ${BASE}`);
   if (SKIP_DATA) console.log("(SMOKE_NO_DATA=1: halaman berdata dilewati)");
   if (SKIP_AUTH) console.log("(bagian peran dilewati)");
+  if (EXPECT_DEMO) console.log("(SMOKE_EXPECT_DEMO=1: tombol demo diperiksa)");
   console.log("");
 
   if (!(await waitForServer())) {
@@ -286,12 +302,13 @@ async function main() {
   console.log("Anonim");
   for (const check of PUBLIC) {
     if (check.data && SKIP_DATA) continue;
+    if (check.demo && !EXPECT_DEMO) continue;
     const result = await get(check.path);
     const ok =
       result.status === check.expect &&
       (!check.body || result.body.includes(check.body));
     report(
-      `GET ${check.path}`,
+      check.label ?? `GET ${check.path}`,
       ok,
       `${result.status}${check.body ? ` body~"${check.body}"` : ""}${
         result.error ? ` ${result.error}` : ""

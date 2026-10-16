@@ -72,19 +72,23 @@ Re-running `npm run db:seed` resets the demo data (truncate + re-insert).
 | `dev` | `next dev` — local dev server with hot reload |
 | `build` | `next build` — production build |
 | `start` | `next start` — serve the production build |
-| `lint` | `eslint` — lint the codebase |
+| `lint` | `eslint . --max-warnings=0` — lint the codebase; warnings fail the run |
+| `typecheck` | `next typegen && tsc --noEmit` — type-check after generating route types (see §9) |
+| `smoke` | HTTP smoke test of the whole route matrix — public pages, guard redirects, and per-role dashboards (`scripts/smoke.mjs`). Needs a running server; see §9 |
 | `db:reset` | Drop, recreate and reseed the **local Postgres** stack (`supabase db reset`), running `supabase/seed.sql` |
 | `db:migrate` | Apply `supabase/migrations/*.sql` to the linked project (`supabase db push`) |
 | `db:seed` | Seed the retired **SQLite** mirror (`data.db`) from `lib/seed.ts`. The app no longer reads it — see §9 — but the historical verification scripts still compare the two stores |
 | `db:types` | Regenerate typed schema (`supabase gen types typescript --local > utils/supabase/database.types.ts`). Use `--linked` instead of `--local` once a remote project is linked |
 | `verify:auth` | End-to-end check of sign-up, onboarding, sign-in and sign-out, driven over HTTP (`scripts/verify-auth.ps1`) |
 | `verify:rls` | Check every RLS policy against PostgREST, anonymously and as four real accounts (`scripts/verify-rls.ps1`) |
-| `verify` | Both of the above |
+| `verify:offers` | Drive real bookings through the resolution-offers ladder — revision, discount, partial/full refund — over HTTP (`scripts/verify-offers.ps1`) |
+| `verify` | All three verify suites (`auth`, `rls`, `offers`) |
 
 Two helpers back those checks and are usable on their own: `scripts/sign-in-as.ps1`
 signs in as any seeded account and replays the session cookie, which is how the role
 matrix is driven; `scripts/sqlite-query.mjs` runs one SQL statement against `data.db`
-and prints JSON.
+and prints JSON. `scripts/smoke.mjs` (`npm run smoke`) is the third and the only
+portable one — pure Node, no Docker or PowerShell, so it also runs in CI (see §9).
 
 ## 5. Production Build
 
@@ -100,6 +104,49 @@ Notes:
 - Set the same three env vars on the host. Never use a `NEXT_PUBLIC_` prefix for the secret key.
 - No local DB file anymore: the SQLite `database is locked` / WAL / writable-filesystem problems disappear. Postgres handles concurrent writers.
 - Enable Row Level Security (RLS) policies before launch (see §8) so the publishable key cannot write arbitrarily.
+
+### Demo mode (competition presentation)
+
+The one-click demo on `/login` ("Masuk sebagai UMKM" / "Masuk sebagai Kreator") and
+`demoSignIn` in `app/actions.ts` are **gated on `NODE_ENV`**: both the buttons and the
+action refuse to run in a production build. That is deliberate — a public deployment
+should never ship a one-click login — but it has a consequence worth stating plainly:
+
+- **`npm run dev`** (`NODE_ENV=development`): the demo buttons show and work against the
+  seeded accounts. This is how the app is meant to be presented.
+- **`npm run build && npm start`** (`NODE_ENV=production`): the buttons are gone, and
+  because a deployed database is not seeded, there is **no way to sign in** — the
+  password form rejects the seed credentials too.
+
+So present from the dev server:
+
+```bash
+npx supabase start     # Docker Desktop must be running
+npm run db:reset       # seed the demo accounts and data
+npm run dev            # http://localhost:3000
+```
+
+Demo accounts — password `kolab12345` for all, written by `supabase/seed.sql`:
+
+| Email | Role | What to show |
+| --- | --- | --- |
+| `budi@kolab.id` | umkm | `/dashboard` — requests, recommendations, history |
+| `rara@kolab.id` | influencer | `/dashboard/influencer` — incoming requests, income |
+| `admin@kolab.id` | admin | `/admin` — dispute queue |
+
+Just before presenting, confirm the running server really is in demo mode:
+
+```powershell
+$env:SMOKE_EXPECT_DEMO='1'; npm run smoke   # PowerShell
+```
+```bash
+SMOKE_EXPECT_DEMO=1 npm run smoke           # bash
+```
+
+The flag is opt-in because a production build is supposed to hide those buttons — CI
+runs such a build, so the default smoke run skips this check on purpose. As a bonus the
+same run visits every route once, so `next dev` has already compiled them before the
+first click — useful when the first thing a judge sees should not be a slow page.
 
 ## 6. Project Structure (Target)
 
@@ -716,14 +763,25 @@ The seed ends by setting `influencers_id_seq` to 12 and `umkms_id_seq` to 4 — 
 
 ### Verification
 
-There is no test runner, so the checks that stand in for one are HTTP scripts. Both
-need a running dev server (`npm run dev`) and a seeded local stack (`npm run db:reset`).
+There is no test runner, so the checks that stand in for one are HTTP scripts. The
+`verify:*` suites need a running dev server (`npm run dev`) and a seeded local stack
+(`npm run db:reset`).
 
 ```bash
-npm run verify        # both suites
+npm run verify        # all three suites
 npm run verify:auth   # sign-up -> onboarding -> sign-in -> sign-out, both stores
 npm run verify:rls    # 40 assertions against PostgREST
+npm run verify:offers # booking -> offer ladder -> settle, over the real actions
 ```
+
+`npm run smoke` is the odd one out and the one to reach for first: it is plain Node
+(no PowerShell, no Docker), so it runs anywhere a server is up — including CI, which is
+why the workflow calls it after the production build. It answers "is the whole route
+matrix still alive?": public pages render, every protected route redirects an anonymous
+visitor to `/login?next=…`, and each seeded role reaches its own dashboard while being
+turned away from the others. With a seeded Supabase it also signs in as `budi@`, `rara@`
+and `admin@`; without one it skips that section instead of failing. See §5 for the
+`SMOKE_EXPECT_DEMO=1` variant used before a presentation.
 
 `verify-auth` drives the real Server Actions with a multipart POST carrying React's own
 `$ACTION_*` fields, so it reaches the cookie write, the redirects and the database
