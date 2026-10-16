@@ -1,0 +1,51 @@
+# CI — gerbang kualitas sebelum masuk main.
+#
+# Latar: awal Okt 2026 ada resolusi konflik rusak (syntax error di file admin)
+# yang tidak tertangkap sampai dijalankan manual di lokal. Workflow ini
+# menjalankan lint + typecheck + build di lingkungan bersih di setiap push dan
+# pull request, supaya kerusakan seperti itu ketahuan sebelum masuk cabang utama.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Satu lomba per ref: push berturut-turut membatalkan run lama yang belum selesai.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Semua rute force-dynamic, jadi build tidak mengambil data dari Supabase —
+      # cukup env palsu agar modul bisa dimuat. Secret asli sengaja TIDAK dipakai
+      # di CI: tidak ada yang perlu dibocorkan, dan PR dari fork tetap aman.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-dummy-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-dummy-key
