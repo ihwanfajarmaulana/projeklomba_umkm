@@ -24,9 +24,9 @@ jobs:
     name: Lint, typecheck & build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -38,6 +38,9 @@ jobs:
         run: npm run lint
 
       - name: Typecheck
+        # `next typegen` wajib jalan lebih dulu: tipe rute (PageProps<"/...">)
+        # digenerate Next ke .next — di checkout bersih (CI) belum ada, jadi
+        # `tsc --noEmit` polos akan gagal "Cannot find name 'PageProps'".
         run: npm run typecheck
 
       # Semua rute force-dynamic, jadi build tidak mengambil data dari Supabase —
