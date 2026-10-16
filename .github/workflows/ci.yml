@@ -23,6 +23,12 @@ jobs:
   quality:
     name: Lint, typecheck & build
     runs-on: ubuntu-latest
+    # Supabase palsu untuk seluruh job: build maupun smoke tidak boleh butuh
+    # secret asli. Semua rute force-dynamic, jadi tidak ada data yang diambil.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-dummy-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-dummy-key
     steps:
       - uses: actions/checkout@v5
 
@@ -43,12 +49,16 @@ jobs:
         # `tsc --noEmit` polos akan gagal "Cannot find name 'PageProps'".
         run: npm run typecheck
 
-      # Semua rute force-dynamic, jadi build tidak mengambil data dari Supabase —
-      # cukup env palsu agar modul bisa dimuat. Secret asli sengaja TIDAK dipakai
-      # di CI: tidak ada yang perlu dibocorkan, dan PR dari fork tetap aman.
       - name: Build
         run: npm run build
+
+      # Smoke test level-routing saja: 404, pengalihan rute terproteksi, dan
+      # halaman publik tanpa data. Bagian berdata & per-peran dilewati karena CI
+      # tidak menjalankan Supabase sungguhan (env di atas hanya palsu).
+      - name: Smoke test (routing)
+        run: |
+          npm run start &
+          npm run smoke
         env:
-          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-dummy-key
-          SUPABASE_SERVICE_ROLE_KEY: ci-dummy-key
+          SMOKE_NO_DATA: "1"
+          SMOKE_NO_AUTH: "1"
