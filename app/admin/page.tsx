@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Dashboard Admin",
   description:
-    "Ringkasan kasus sengketa Kolab.id — pantau antrian dan dana yang ditahan.",
+    "Ringkasan kasus sengketa Kolab.id â€” pantau antrian dan dana yang ditahan.",
 };
 
 const COLUMNS: TableColumn<AdminCase>[] = [
@@ -92,10 +92,10 @@ export default async function AdminDashboardPage() {
     <AdminShell>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-head text-2xl font-extrabold tracking-[-0.02em] text-neutral-900">
+          <h2 className="font-head type-page-title text-neutral-900">
             Ringkasan Kasus Sengketa
           </h2>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 type-table text-neutral-600">
             Kasus paling dekat dengan batas keputusan tampil lebih dulu agar
             tidak ada yang terlewat.
           </p>
@@ -139,10 +139,10 @@ export default async function AdminDashboardPage() {
       <section className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h3 className="font-head text-xl font-bold tracking-[-0.02em] text-neutral-900">
+            <h3 className="font-head type-section-title text-neutral-900">
               Antrian Kasus
             </h3>
-            <span className="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 ring-1 ring-inset ring-primary-100">
+            <span className="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 type-badge text-primary-700 ring-1 ring-inset ring-primary-100">
               {kpi.terbuka} terbuka
             </span>
           </div>
@@ -168,7 +168,7 @@ export default async function AdminDashboardPage() {
           />
         </div>
 
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 type-caption text-neutral-500">
           <Link
             href="/admin/kasus"
             className="font-semibold text-primary-700 hover:text-primary-800"

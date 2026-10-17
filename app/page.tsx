@@ -1,16 +1,11 @@
-import { getCategories, getFeaturedInfluencers, getLandingStats } from "@/lib/data/catalog";
 import Link from "next/link";
 import {
   ArrowRight,
-  ArrowUpRight,
-  BadgeCheck,
   BarChart3,
-  CheckCircle2,
   ChevronDown,
   ClipboardList,
   Handshake,
   LayoutDashboard,
-  MapPin,
   Megaphone,
   Search,
   ShieldCheck,
@@ -18,12 +13,8 @@ import {
   TrendingUp,
   Users,
   Wallet,
-  Zap,
 } from "lucide-react";
 
-import { formatFollowers, formatRupiah } from "@/lib/format";
-import { CreatorCard } from "@/components/CreatorCard";
-import { Avatar } from "@/components/Avatar";
 import { Reveal } from "@/components/Reveal";
 
 export const dynamic = "force-dynamic";
@@ -46,10 +37,6 @@ const marqueeItems = [
 ];
 
 export default async function LandingPage() {
-  const stats = await getLandingStats();
-  const featured = await getFeaturedInfluencers(4);
-  const categories = await getCategories();
-
   return (
     <div>
       {/* ================================================================
@@ -107,118 +94,14 @@ export default async function LandingPage() {
 
           </div>
 
-          {/* ---- Kanan: preview produk ---- */}
+          {/* ---- Kanan: placeholder ---- */}
           <div
             className="animate-fade-up relative hidden lg:block"
             style={{ animationDelay: "200ms" }}
           >
-            {/* Panel utama kiri-atas */}
-            <div className="relative z-10 mx-auto w-[88%] -rotate-1 rounded-3xl border border-neutral-200 bg-white p-6 shadow-lg shadow-primary-500/15 transition-transform duration-300 hover:rotate-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-                    Cari Kreator
-                  </p>
-                  <p className="font-head text-sm font-bold text-neutral-900">
-                    {featured.length} rekomendasi untukmu
-                  </p>
-                </div>
-                <Link
-                  href="/influencers"
-                  className="grid h-9 w-9 place-items-center rounded-xl bg-primary-50 text-primary-600 transition-colors hover:bg-primary-600 hover:text-white"
-                  aria-label="Lihat semua kreator"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-                <Search className="h-4 w-4 text-neutral-400" />
-                <span className="text-xs text-neutral-400">
-                  cari kreator, kategori, kota…
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2.5">
-                {featured.slice(0, 3).map((inf) => (
-                  <Link
-                    key={inf.id}
-                    href={`/influencers/${inf.id}`}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white p-3 transition-all hover:border-primary-200 hover:shadow-md"
-                  >
-                    <Avatar name={inf.name} category={inf.categorySlug} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1 truncate font-head text-sm font-bold text-neutral-900">
-                        {inf.name}
-                        {inf.verified && (
-                          <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-primary-600" />
-                        )}
-                      </p>
-                      <p className="truncate text-[11px] text-neutral-500">
-                        {inf.category} · {formatFollowers(inf.followers)} followers
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-sm font-extrabold text-primary-700">
-                      {formatRupiah(inf.startingPrice)}
-                    </p>
-                  </Link>
-                ))}
-              </div>
+            <div className="grid aspect-[4/3] w-full place-items-center rounded-3xl border-2 border-dashed border-neutral-300 bg-neutral-100 text-sm font-semibold text-neutral-400">
+              Hero visual placeholder
             </div>
-
-            {/* Kartu creator offset (kanan-bawah) */}
-            <div className="absolute -right-2 bottom-4 z-20 w-[62%] rotate-2 rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-md backdrop-blur transition-transform duration-300 hover:rotate-0">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-success-500 to-success-600 text-white">
-                  <ShieldCheck className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="font-head text-sm font-bold text-neutral-900">
-                    Dana aman & terverifikasi
-                  </p>
-                  <p className="text-[11px] text-neutral-500">
-                    Pembayaran ditahan sampai konten tayang
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Kartu kecil melayang (kiri) */}
-            <div className="animate-float absolute -left-4 top-10 z-20 w-[46%] rounded-2xl border border-success-200 bg-white p-3.5 shadow-md shadow-success-500/10">
-              <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-success-100 text-success-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="font-head text-xs font-bold text-neutral-900">
-                    Kolaborasi disetujui
-                  </p>
-                  <p className="text-[10px] text-neutral-500">
-                    Warung Kopi Senja × Rara Nadia
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Kartu kecil melayang (kanan) */}
-            <div className="animate-float animate-float-delay absolute -bottom-3 left-10 z-20 w-[46%] rounded-2xl border border-primary-200 bg-white p-3.5 shadow-md shadow-primary-500/10">
-              <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-100 text-primary-600">
-                  <TrendingUp className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="font-head text-xs font-bold text-neutral-900">
-                    +2,4× interaksi campaign
-                  </p>
-                  <p className="text-[10px] text-neutral-500">
-                    rata-rata growth UMKM partner
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Glow dekoratif di belakang */}
-            <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-primary-500/15 via-transparent to-primary-500/15 blur-2xl" />
           </div>
         </div>
       </section>
@@ -351,13 +234,13 @@ MASALAH → SOLUSI
               icon: Wallet,
               title: "Harga per video jelas",
               desc: "Setiap kreator memajang paket lengkap — Review Video, Unboxing & Story, hingga Kampanye Komplit. Tanpa tawar-menawar di DM.",
-              color: "from-primary-500 to-primary-800",
+              color: "from-secondary-500 to-secondary-700",
             },
             {
               icon: ClipboardList,
               title: "Booking 3 langkah",
               desc: "Pilih paket, tulis brief singkat, kirim. Kreator tinggal setujui atau tolak — status langsung terpantau.",
-              color: "from-success-500 to-success-600",
+              color: "from-success-500 to-success-700",
             },
             {
               icon: LayoutDashboard,
@@ -462,57 +345,6 @@ MASALAH → SOLUSI
       </section>
 
       {/* ================================================================
-          KATEGORI + KREATOR PILIHAN
-      ================================================================ */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-        <Reveal>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-widest text-primary-600">
-                Jelajahi
-              </p>
-            <h2 className="font-head mt-2 text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
-              Kreator per kategori
-            </h2>
-            <p className="mt-2 max-w-md text-neutral-600">
-              Semua kreator sudah kami kurasi. Pilih sesuai kategori usahamu dan
-              mulai kolaborasi hari ini.
-            </p>
-          </div>
-          <Link
-            href="/influencers"
-            className="group inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-800"
-          >
-            Semua kreator
-            <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
-          </div>
-        </Reveal>
-
-<Reveal>
-          <div className="mt-8 flex flex-wrap gap-3">
-          {categories.map((n) => (
-            <Link
-              key={n.slug}
-              href={`/influencers?niche=${encodeURIComponent(n.slug)}`}
-              className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 hover:shadow-sm"
-            >
-              {n.name}
-            </Link>
-          ))}
-          </div>
-        </Reveal>
-
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.map((inf, i) => (
-            <Reveal key={inf.id} delayMs={i * 50}>
-              <CreatorCard influencer={inf} className="h-full" />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ================================================================
 
           FAQ
       ================================================================ */}
@@ -579,11 +411,7 @@ MASALAH → SOLUSI
           <div className="bg-grid absolute inset-0 opacity-20" />
 
           <div className="relative mx-auto max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-secondary-300/50 bg-secondary-500/15 px-3 py-1 text-xs font-semibold backdrop-blur">
-              <Zap className="h-3.5 w-3.5 text-secondary-300" />
-              Gratis untuk memulai
-            </span>
-            <h2 className="font-head mt-5 text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+            <h2 className="font-head text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               Siap membawa UMKM-mu naik kelas?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-primary-100">
@@ -604,15 +432,6 @@ MASALAH → SOLUSI
               >
                 Coba Demo Sekarang
               </Link>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-primary-100">
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" /> 6+ kota di Indonesia
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Handshake className="h-3.5 w-3.5" /> {stats.completedCount}+
-                kolaborasi selesai
-              </span>
             </div>
           </div>
           </div>

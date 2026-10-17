@@ -37,10 +37,10 @@ export default async function ProfilePage(
   return (
     <>
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-primary-700">
+        <p className="type-table-head uppercase text-primary-700">
           Profile
         </p>
-        <h1 className="mt-1 font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h1 className="mt-1 font-head type-page-title text-neutral-900">
           Profil Usaha
         </h1>
         <p className="mt-1.5 text-neutral-600">
@@ -78,15 +78,15 @@ export default async function ProfilePage(
               <Store className="h-6 w-6" />
             </span>
             <div className="min-w-0">
-              <p className="truncate font-head text-lg font-extrabold tracking-[-0.02em] text-neutral-900">
+              <p className="truncate font-head type-section-title text-neutral-900">
                 {umkm.name}
               </p>
-              <p className="truncate text-sm text-neutral-500">
+              <p className="truncate type-table text-neutral-500">
                 {umkm.category} · {umkm.city}
               </p>
             </div>
           </div>
-          <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-6 text-sm">
+          <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-6 type-table">
             <div className="flex justify-between gap-4">
               <dt className="text-neutral-500">Pemilik</dt>
               <dd className="font-semibold text-neutral-900">{umkm.owner}</dd>
@@ -107,7 +107,7 @@ export default async function ProfilePage(
           action={updateProfile}
           className="h-fit rounded-3xl border border-neutral-200 bg-neutral-0 p-6 shadow-xs sm:p-8"
         >
-          <h2 className="font-head text-base font-extrabold tracking-[-0.02em] text-neutral-900">
+          <h2 className="font-head type-card-title text-neutral-900">
             Ubah Profil
           </h2>
           <div className="mt-5 space-y-4">

@@ -95,10 +95,10 @@ export default async function InfluencerDashboardPage(
     <InfluencerShell>
       {/* Header */}
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-primary-700">
+        <p className="type-table-head uppercase text-primary-700">
           Dashboard Kreator
         </p>
-        <h1 className="mt-1 font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h1 className="mt-1 font-head type-page-title text-neutral-900">
           Halo, {profile.name}! 🎬
         </h1>
         <p className="mt-1.5 text-neutral-600">
@@ -110,7 +110,7 @@ export default async function InfluencerDashboardPage(
       <div className="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-neutral-200 bg-neutral-0 p-4 shadow-xs sm:p-5">
         <Avatar name={profile.name} category={profile.categorySlug} size="md" />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-neutral-900">
+          <p className="flex items-center gap-1.5 type-card-title text-neutral-900">
             {profile.name}
             {profile.verified && (
               <BadgeCheck className="h-4 w-4 text-primary-600" />
@@ -201,13 +201,13 @@ export default async function InfluencerDashboardPage(
       <div className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-widest text-primary-700">
+            <p className="flex items-center gap-1.5 type-table-head uppercase text-primary-700">
               <Handshake className="h-4 w-4" /> Riwayat Kolaborasi
             </p>
-            <h2 className="mt-1 font-head text-xl font-extrabold tracking-[-0.02em] text-neutral-900">
+            <h2 className="mt-1 font-head type-section-title text-neutral-900">
               Aktivitas terbaru
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 type-table text-neutral-500">
               {bookings.length} kolaborasi tercatat. Yang butuh aksimu
               ditampilkan paling atas.
             </p>
@@ -215,7 +215,7 @@ export default async function InfluencerDashboardPage(
           {bookings.length > 4 && (
             <Link
               href="/dashboard/influencer/riwayat"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800"
+              className="inline-flex items-center gap-1 type-label text-primary-700 hover:text-primary-800"
             >
               Lihat Semua <ArrowUpRight className="h-4 w-4" />
             </Link>
@@ -227,10 +227,10 @@ export default async function InfluencerDashboardPage(
             <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary-50 text-primary-600">
               <Handshake className="h-7 w-7" />
             </span>
-            <h3 className="mt-4 font-head text-lg font-bold tracking-[-0.02em] text-neutral-900">
+            <h3 className="mt-4 font-head type-section-title text-neutral-900">
               Belum ada permintaan
             </h3>
-            <p className="mt-1 max-w-sm text-sm text-neutral-500">
+            <p className="mt-1 max-w-sm type-table text-neutral-500">
               Masih sepi? Pastikan profil publikmu lengkap biar UMKM mudah
               menemukanmu.
             </p>
@@ -250,19 +250,19 @@ export default async function InfluencerDashboardPage(
                       size="md"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-neutral-900">
+                      <p className="truncate type-card-title text-neutral-900">
                         {b.umkmName}
                       </p>
-                      <p className="truncate text-xs text-neutral-500">
+                      <p className="truncate type-caption text-neutral-500">
                         {b.umkmOwner} · {b.umkmCategory} · {b.umkmCity}
                       </p>
-                      <p className="mt-2 rounded-xl bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-600">
+                      <p className="mt-2 rounded-xl bg-neutral-50 px-3 py-2 type-caption leading-relaxed text-neutral-600">
                         <span className="font-semibold text-neutral-700">
                           Brief:
                         </span>{" "}
                         {b.brief || "—"}
                       </p>
-                      <p className="mt-2 text-xs text-neutral-400">
+                      <p className="mt-2 type-caption text-neutral-400">
                         Paket{" "}
                         <strong className="text-neutral-600">
                           {b.packageName}
@@ -274,7 +274,7 @@ export default async function InfluencerDashboardPage(
 
                   <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
                     <div className="flex flex-col items-start gap-2 sm:items-end">
-                      <p className="font-head text-lg font-extrabold tracking-[-0.02em] text-neutral-900">
+                      <p className="font-head type-section-title text-neutral-900">
                         {formatRupiah(b.amount)}
                       </p>
                       <StatusBadge status={b.status} />
@@ -345,7 +345,7 @@ export default async function InfluencerDashboardPage(
                     {b.status === "COMPLETED" && (
                       <>
                         {myReviews.get(b.id) ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700 ring-1 ring-inset ring-primary-200">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 type-badge text-primary-700 ring-1 ring-inset ring-primary-200">
                             <StarRating
                               rating={myReviews.get(b.id)!}
                               size="h-3 w-3"
@@ -367,7 +367,7 @@ export default async function InfluencerDashboardPage(
                     )}
 
                     {b.status === "REJECTED" && (
-                      <p className="text-xs text-neutral-400">
+                      <p className="type-caption text-neutral-400">
                         Ditolak — tidak ada biaya dipotong.
                       </p>
                     )}

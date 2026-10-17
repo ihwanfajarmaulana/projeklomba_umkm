@@ -47,3 +47,6 @@ next-env.d.ts
 *.db
 *.db-shm
 *.db-wal
+
+# supabase cli runtime cache/state (versions, link ref, pooler url)
+supabase/.temp/

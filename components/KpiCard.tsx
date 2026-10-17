@@ -37,7 +37,7 @@ export function KpiCard({
   return (
     <div className="rounded-2xl border border-neutral-200 bg-neutral-0 p-6 shadow-xs">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <p className="type-table-head uppercase text-neutral-500">
           {label}
         </p>
         <span
@@ -46,10 +46,10 @@ export function KpiCard({
           <Icon className="h-4.5 w-4.5" />
         </span>
       </div>
-      <p className="mt-3 font-head text-2xl font-bold tracking-[-0.02em] text-neutral-900">
+      <p className="type-metric font-head mt-3 text-neutral-900">
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-neutral-500">{hint}</p>}
+      {hint && <p className="type-caption mt-1 text-neutral-500">{hint}</p>}
       {href && (
         <Link
           href={href}

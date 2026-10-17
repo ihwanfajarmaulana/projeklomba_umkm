@@ -84,7 +84,7 @@ export function StatusBadge({ status }: { status: StatusKey }) {
   const s = STATUS_STYLES[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${s.className}`}
+      className={`type-badge inline-flex items-center rounded-full px-2.5 py-1 ring-1 ring-inset ${s.className}`}
     >
       {s.label}
     </span>

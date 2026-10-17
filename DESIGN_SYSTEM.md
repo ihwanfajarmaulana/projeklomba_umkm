@@ -251,27 +251,94 @@ The heading family gives the brand a slightly distinctive character
 while Inter keeps dense dashboards, prices, tables, and metadata highly
 readable.
 
-  Style        Family                Weight   Size / Line-height Usage
-  ------------ ------------------- -------- -------------------- -------------------------
-  Display      Plus Jakarta Sans        700              48 / 56 Landing hero
-  Heading 1    Plus Jakarta Sans        700              36 / 44 Page title
-  Heading 2    Plus Jakarta Sans        700              28 / 36 Section title
-  Heading 3    Plus Jakarta Sans        600              22 / 30 Card title
-  Heading 4    Plus Jakarta Sans        600              18 / 26 Subsection
-  Body Large   Inter                    400              18 / 28 Intro / supporting copy
-  Body         Inter                    400              16 / 24 Default copy
-  Body Small   Inter                    400              14 / 20 Secondary copy
-  Label        Inter                    600              14 / 20 Form labels
-  Button       Inter                    600              14 / 20 Button text
-  Caption      Inter                    400              12 / 18 Metadata
+Type is built from **primitives** (weight, size, tracking) composed
+into **semantic** roles. Primitives live in `:root` in
+`app/globals.css`; components consume the semantic roles via `var()`
+or Tailwind v4 arbitrary values (see §16), never raw px/rem.
+
+## 4.1 Primitives
+
+### Font Weight
+
+  Token                    Value   Usage
+  ------------------------ ------- --------------------------
+  `--font-weight-regular`  `400`   Body / supporting copy
+  `--font-weight-medium`   `500`   Card titles, labels
+  `--font-weight-semibold` `600`   Headings, buttons, badges
+  `--font-weight-bold`     `700`   Display, metrics
+
+### Font Size (rem scale, base 16px)
+
+  Token                 Value                                   Usage
+  --------------------- --------------------------------------- --------------------------
+  `--font-size-2xs`     `0.6875rem` (11px)                      Badges
+  `--font-size-xs`      `0.75rem` (12px)                        Captions, eyebrows, table heads
+  `--font-size-sm`      `0.875rem` (14px)                       Tables, labels, secondary copy
+  `--font-size-md`      `1rem` (16px)                           Default body, card titles, buttons
+  `--font-size-lg`      `1.125rem` (18px)                       Section titles
+  `--font-size-xl`      `1.25rem` (20px)                        Lead paragraphs
+  `--font-size-2xl`     `1.5rem` (24px)                         Page titles
+  `--font-size-3xl`     `1.875rem` (30px)                       Metrics
+  `--font-size-4xl`     `2.25rem` (36px)                        Large metrics
+
+### Fluid Sizes (landing page only)
+
+  Token                      Value                                              Usage
+  -------------------------- -------------------------------------------------- ------------------
+  `--font-size-fluid-display` `clamp(2.5rem, 1.5rem + 4vw, 4.5rem)`             Landing hero display
+  `--font-size-fluid-h1`      `clamp(2rem, 1.3rem + 2.8vw, 3.5rem)`              Landing H1
+  `--font-size-fluid-h2`      `clamp(1.625rem, 1.2rem + 1.7vw, 2.5rem)`          Landing H2
+
+### Letter Spacing
+
+  Token                     Value      Usage
+  ------------------------- ---------- --------------------------
+  `--letter-spacing-tighter` `-0.04em`  Display, metrics
+  `--letter-spacing-tight`   `-0.02em`  Headings, titles
+  `--letter-spacing-normal`  `0`        Body copy
+  `--letter-spacing-wide`    `0.02em`   Captions
+  `--letter-spacing-wider`   `0.06em`   Table heads, badges (with uppercase)
+  `--letter-spacing-widest`  `0.1em`    Eyebrows (with uppercase)
+
+## 4.2 Semantic --- Landing Page
+
+  Role            Size Token                  Weight Token               Tracking Token
+  --------------- --------------------------- -------------------------- ------------------------------
+  Display         `--font-size-fluid-display` `--font-weight-bold`       `--letter-spacing-tighter`
+  H1              `--font-size-fluid-h1`      `--font-weight-bold`       `--letter-spacing-tight`
+  H2              `--font-size-fluid-h2`      `--font-weight-semibold`   `--letter-spacing-tight`
+  Lead            `--font-size-xl`            `--font-weight-regular`    `--letter-spacing-normal`
+  Body            `--font-size-md`            `--font-weight-regular`    `--letter-spacing-normal`
+  Eyebrow         `--font-size-xs`            `--font-weight-semibold`   `--letter-spacing-widest`
+  Button          `--font-size-md`            `--font-weight-semibold`   `--letter-spacing-normal`
+
+Composed tokens: `--type-{display,h1,h2,lead,body,eyebrow,button}-{size,weight,tracking}`.
+
+## 4.3 Semantic --- Dashboard (more compact)
+
+  Role            Size Token          Weight Token             Tracking Token
+  --------------- ------------------- ------------------------ ------------------------------
+  Page title      `--font-size-2xl`   `--font-weight-semibold` `--letter-spacing-tight`
+  Section title   `--font-size-lg`    `--font-weight-semibold` `--letter-spacing-tight`
+  Card title      `--font-size-md`    `--font-weight-medium`   `--letter-spacing-normal`
+  Metric          `--font-size-3xl`   `--font-weight-bold`     `--letter-spacing-tighter`
+  Table           `--font-size-sm`    `--font-weight-regular`  `--letter-spacing-normal`
+  Table head      `--font-size-xs`    `--font-weight-semibold` `--letter-spacing-wider`
+  Label           `--font-size-sm`    `--font-weight-medium`   `--letter-spacing-normal`
+  Caption         `--font-size-xs`    `--font-weight-regular`  `--letter-spacing-wide`
+  Badge           `--font-size-2xs`   `--font-weight-semibold` `--letter-spacing-wider`
+
+Composed tokens: `--type-{page-title,section-title,card-title,metric,table,table-head,label,caption,badge}-{size,weight,tracking}`.
+
+Table heads, badges, and eyebrows are always paired with uppercase.
 
 ### Typography Rules
 
--   Headings use `letter-spacing: -0.02em`.
--   Body text uses default tracking.
+-   Consume semantic `--type-*` roles, not primitives or raw px/rem.
 -   Prices use **600--700 weight** so they are easy to scan.
 -   Avoid all-caps except for very small metadata or badges.
 -   Minimum regular body size: **14px**; default body size: **16px**.
+-   Fluid sizes are landing-only; dashboards use the fixed scale.
 
 ------------------------------------------------------------------------
 
@@ -872,6 +939,11 @@ exception: all rectangular steps are overridden to a global 10px in
   --font-head: 'Plus Jakarta Sans', sans-serif;
   --font-body: 'Inter', sans-serif;
 
+/* Typography primitives + semantics live in :root (app/globals.css),
+   full table in §4. Consumed via var() or Tailwind v4 paren shorthand:
+   text-(--type-body-size), font-(--type-body-weight),
+   tracking-(--type-body-tracking). */
+
   /* Shadow */
   --shadow-xs: 0 1px 2px rgba(29,29,26,.06);
   --shadow-sm: 0 2px 8px rgba(29,29,26,.08);
@@ -985,21 +1057,27 @@ Layout constants: `--container-lg` (1024px) → `max-w-[1024px]`,
 
 ### Typography
 
-  Style        Tailwind classes
-  ------------ --------------------------------------------------
-  Display      `font-head text-5xl font-bold leading-[56px]`
-  Heading 1    `font-head text-4xl font-bold leading-[44px]`
-  Heading 2    `font-head text-[28px] font-bold leading-[36px]`
-  Heading 3    `font-head text-[22px] font-semibold leading-[30px]`
-  Heading 4    `font-head text-lg font-semibold leading-[26px]`
-  Body Large   `text-lg leading-7`
-  Body         `text-base leading-6`
-  Body Small   `text-sm leading-5`
-  Label        `text-sm font-semibold leading-5`
-  Button       `text-sm font-semibold leading-5`
-  Caption      `text-xs leading-[18px]`
+Type roles resolve to `--type-*-{size,weight,tracking}` tokens (§4).
+Prefer the helper classes in `app/globals.css` (one per role) and add
+color + family utilities alongside:
 
-Headings additionally use `tracking-[-0.02em]`.
+  Role          Helper + color/family example
+  ------------- ------------------------------------------------------------------
+  Display       `type-display font-head text-neutral-900`
+  H1 / H2       `type-h1 font-head text-neutral-900`
+  Body / Lead   `type-body text-neutral-600`
+  Page title    `type-page-title font-head text-neutral-900`
+  Metric        `type-metric font-head text-neutral-900`
+  Table / head  `type-table text-neutral-700` / `type-table-head uppercase text-neutral-500`
+  Caption       `type-caption text-neutral-500`
+  Badge         `type-badge uppercase text-neutral-600`
+
+Raw Tailwind equivalent (when a helper doesn't fit):
+`text-(--type-body-size) font-(--type-body-weight)
+tracking-(--type-body-tracking)`.
+
+Headings use `font-head` (Plus Jakarta Sans); body uses the default
+sans (Inter). Tracking comes from each role's `--type-*-tracking`.
 
 ------------------------------------------------------------------------
 

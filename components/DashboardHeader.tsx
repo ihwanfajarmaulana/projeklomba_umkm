@@ -54,7 +54,7 @@ export function DashboardHeader({
         >
           <Logo />
         </Link>
-        <h1 className="hidden min-w-0 flex-1 truncate font-head text-lg font-bold tracking-[-0.02em] text-neutral-900 lg:block">
+        <h1 className="type-page-title font-head hidden min-w-0 flex-1 truncate text-neutral-900 lg:block">
           {title}
         </h1>
         <div className="flex shrink-0 items-center gap-2.5">

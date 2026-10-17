@@ -21,11 +21,11 @@ export function EmptyState({
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary-50 text-primary-600">
         <Icon className="h-7 w-7" />
       </span>
-      <h3 className="mt-4 font-head text-lg font-bold tracking-[-0.02em] text-neutral-900">
+      <h3 className="type-section-title font-head mt-4 text-neutral-900">
         {title}
       </h3>
       {description && (
-        <p className="mt-1 max-w-sm text-sm text-neutral-500">{description}</p>
+        <p className="type-table mt-1 max-w-sm text-neutral-500">{description}</p>
       )}
       {action && <div className="mt-5">{action}</div>}
     </div>

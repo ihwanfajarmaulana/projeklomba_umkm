@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Scale, SearchX } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/Button";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Antrian Kasus",
   description:
-    "Antrian kasus sengketa Kolab.id — urutkan berdasarkan batas keputusan terdekat.",
+    "Antrian kasus sengketa Kolab.id â€” urutkan berdasarkan batas keputusan terdekat.",
 };
 
 const FILTERS: readonly AdminCaseFilter[] = [
@@ -119,11 +119,11 @@ export default async function AdminKasusPage(
   return (
     <AdminShell>
       <div>
-        <h2 className="font-head text-2xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h2 className="font-head type-page-title text-neutral-900">
           Antrian Kasus
         </h2>
-        <p className="mt-1 text-sm text-neutral-600">
-          Urut berdasarkan batas keputusan terdekat — kasus{" "}
+        <p className="mt-1 type-table text-neutral-600">
+          Urut berdasarkan batas keputusan terdekat â€” kasus{" "}
           <span className="font-semibold text-error-700">Terlambat</span>{" "}
           ditandai dan paling butuh perhatian.
         </p>

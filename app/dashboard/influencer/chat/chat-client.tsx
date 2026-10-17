@@ -108,10 +108,10 @@ export function ChatClient({
                 {active.partnerInitial}
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-neutral-900">
+                <p className="truncate type-card-title text-neutral-900">
                   {active.partnerName}
                 </p>
-                <p className="text-[11px] text-neutral-500">
+                <p className="type-caption text-neutral-500">
                   {active.unread > 0
                     ? `${active.unread} pesan belum dibaca`
                     : "Percakapan kolaborasi"}
@@ -126,7 +126,7 @@ export function ChatClient({
             />
           </>
         ) : (
-          <p className="p-10 text-center text-sm text-neutral-500">
+          <p className="p-10 text-center type-table text-neutral-500">
             Pilih percakapan untuk mulai.
           </p>
         )}

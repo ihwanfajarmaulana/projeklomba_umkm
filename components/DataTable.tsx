@@ -53,14 +53,14 @@ export function DataTable<T>({
       className={`overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-0 shadow-xs ${className}`}
     >
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] text-left text-sm">
+        <table className="type-table w-full min-w-[680px] text-left">
           <thead className="border-b border-neutral-200 bg-neutral-50">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
-                  className={`whitespace-nowrap px-5 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 ${col.headerClassName ?? ""}`}
+                  className={`type-table-head whitespace-nowrap px-5 py-3 uppercase text-neutral-500 ${col.headerClassName ?? ""}`}
                 >
                   {col.header}
                 </th>

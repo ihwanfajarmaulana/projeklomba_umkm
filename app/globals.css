@@ -129,6 +129,197 @@
   --shadow-lg: 0 16px 40px rgba(29, 29, 26, 0.12);
 }
 
+/* ========== TIPOGRAFI (DESIGN_SYSTEM.md §4) ==========
+   Primitif + semantik landing/dashboard. Sengaja di :root (bukan
+   @theme): dikonsumsi via var() / arbitrary value Tailwind v4,
+   mis. text-(--type-body-size), tracking-(--type-body-tracking). */
+:root {
+  /* ========== PRIMITIVE: Font Weight ========== */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ========== PRIMITIVE: Font Size (skala rem, base 16px) ========== */
+  --font-size-2xs: 0.6875rem; /* 11px */
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-md: 1rem; /* 16px */
+  --font-size-lg: 1.125rem; /* 18px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem; /* 36px */
+
+  /* Fluid, khusus landing page */
+  --font-size-fluid-display: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
+  --font-size-fluid-h1: clamp(2rem, 1.3rem + 2.8vw, 3.5rem);
+  --font-size-fluid-h2: clamp(1.625rem, 1.2rem + 1.7vw, 2.5rem);
+
+  /* ========== PRIMITIVE: Letter Spacing ========== */
+  --letter-spacing-tighter: -0.04em;
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.02em;
+  --letter-spacing-wider: 0.06em;
+  --letter-spacing-widest: 0.1em;
+}
+
+/* ========== SEMANTIC: Landing Page ========== */
+:root {
+  --type-display-size: var(--font-size-fluid-display);
+  --type-display-weight: var(--font-weight-bold);
+  --type-display-tracking: var(--letter-spacing-tighter);
+
+  --type-h1-size: var(--font-size-fluid-h1);
+  --type-h1-weight: var(--font-weight-bold);
+  --type-h1-tracking: var(--letter-spacing-tight);
+
+  --type-h2-size: var(--font-size-fluid-h2);
+  --type-h2-weight: var(--font-weight-semibold);
+  --type-h2-tracking: var(--letter-spacing-tight);
+
+  --type-lead-size: var(--font-size-xl);
+  --type-lead-weight: var(--font-weight-regular);
+  --type-lead-tracking: var(--letter-spacing-normal);
+
+  --type-body-size: var(--font-size-md);
+  --type-body-weight: var(--font-weight-regular);
+  --type-body-tracking: var(--letter-spacing-normal);
+
+  --type-eyebrow-size: var(--font-size-xs);
+  --type-eyebrow-weight: var(--font-weight-semibold);
+  --type-eyebrow-tracking: var(--letter-spacing-widest);
+
+  --type-button-size: var(--font-size-md);
+  --type-button-weight: var(--font-weight-semibold);
+  --type-button-tracking: var(--letter-spacing-normal);
+}
+
+/* ========== SEMANTIC: Dashboard (lebih kompak) ========== */
+:root {
+  --type-page-title-size: var(--font-size-2xl);
+  --type-page-title-weight: var(--font-weight-semibold);
+  --type-page-title-tracking: var(--letter-spacing-tight);
+
+  --type-section-title-size: var(--font-size-lg);
+  --type-section-title-weight: var(--font-weight-semibold);
+  --type-section-title-tracking: var(--letter-spacing-tight);
+
+  --type-card-title-size: var(--font-size-md);
+  --type-card-title-weight: var(--font-weight-medium);
+  --type-card-title-tracking: var(--letter-spacing-normal);
+
+  --type-metric-size: var(--font-size-3xl);
+  --type-metric-weight: var(--font-weight-bold);
+  --type-metric-tracking: var(--letter-spacing-tighter);
+
+  --type-table-size: var(--font-size-sm);
+  --type-table-weight: var(--font-weight-regular);
+  --type-table-tracking: var(--letter-spacing-normal);
+
+  --type-table-head-size: var(--font-size-xs);
+  --type-table-head-weight: var(--font-weight-semibold);
+  --type-table-head-tracking: var(
+    --letter-spacing-wider
+  ); /* dipakai dengan uppercase */
+
+  --type-label-size: var(--font-size-sm);
+  --type-label-weight: var(--font-weight-medium);
+  --type-label-tracking: var(--letter-spacing-normal);
+
+  --type-caption-size: var(--font-size-xs);
+  --type-caption-weight: var(--font-weight-regular);
+  --type-caption-tracking: var(--letter-spacing-wide);
+
+  --type-badge-size: var(--font-size-2xs);
+  --type-badge-weight: var(--font-weight-semibold);
+  --type-badge-tracking: var(--letter-spacing-wider);
+}
+
+/* ========== Helper kelas tipografi (§4, §16) ==========
+   Satu kelas per role semantik; warna + family tetap via util. */
+.type-display {
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-tracking);
+}
+.type-h1 {
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  letter-spacing: var(--type-h1-tracking);
+}
+.type-h2 {
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  letter-spacing: var(--type-h2-tracking);
+}
+.type-lead {
+  font-size: var(--type-lead-size);
+  font-weight: var(--type-lead-weight);
+  letter-spacing: var(--type-lead-tracking);
+}
+.type-body {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  letter-spacing: var(--type-body-tracking);
+}
+.type-eyebrow {
+  font-size: var(--type-eyebrow-size);
+  font-weight: var(--type-eyebrow-weight);
+  letter-spacing: var(--type-eyebrow-tracking);
+}
+.type-button {
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  letter-spacing: var(--type-button-tracking);
+}
+.type-page-title {
+  font-size: var(--type-page-title-size);
+  font-weight: var(--type-page-title-weight);
+  letter-spacing: var(--type-page-title-tracking);
+}
+.type-section-title {
+  font-size: var(--type-section-title-size);
+  font-weight: var(--type-section-title-weight);
+  letter-spacing: var(--type-section-title-tracking);
+}
+.type-card-title {
+  font-size: var(--type-card-title-size);
+  font-weight: var(--type-card-title-weight);
+  letter-spacing: var(--type-card-title-tracking);
+}
+.type-metric {
+  font-size: var(--type-metric-size);
+  font-weight: var(--type-metric-weight);
+  letter-spacing: var(--type-metric-tracking);
+}
+.type-table {
+  font-size: var(--type-table-size);
+  font-weight: var(--type-table-weight);
+  letter-spacing: var(--type-table-tracking);
+}
+.type-table-head {
+  font-size: var(--type-table-head-size);
+  font-weight: var(--type-table-head-weight);
+  letter-spacing: var(--type-table-head-tracking);
+}
+.type-label {
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  letter-spacing: var(--type-label-tracking);
+}
+.type-caption {
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  letter-spacing: var(--type-caption-tracking);
+}
+.type-badge {
+  font-size: var(--type-badge-size);
+  font-weight: var(--type-badge-weight);
+  letter-spacing: var(--type-badge-tracking);
+}
+
 html {
   scroll-behavior: smooth;
 }

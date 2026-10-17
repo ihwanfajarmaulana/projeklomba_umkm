@@ -33,10 +33,10 @@ export default async function RiwayatPage(
   return (
     <>
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-primary-700">
+        <p className="type-table-head uppercase text-primary-700">
           Riwayat Kolaborasi
         </p>
-        <h1 className="mt-1 font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h1 className="mt-1 font-head type-page-title text-neutral-900">
           Riwayat Kolaborasi
         </h1>
         <p className="mt-1.5 text-neutral-600">

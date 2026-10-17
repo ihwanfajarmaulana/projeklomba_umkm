@@ -49,7 +49,7 @@ export default async function BookingDetailPage(
   return (
     <>
       <div>
-        <p className="flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary-700">
+        <p className="flex flex-wrap items-center gap-2 type-table-head uppercase text-primary-700">
           <Link href="/dashboard/riwayat" className="hover:text-primary-800">
             Riwayat
           </Link>
@@ -59,7 +59,7 @@ export default async function BookingDetailPage(
           </span>
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+          <h1 className="font-head type-page-title text-neutral-900">
             Detail Kolaborasi
           </h1>
           <StatusBadge status={booking.status} />
@@ -116,7 +116,7 @@ export default async function BookingDetailPage(
               )}
               <Link
                 href="/dashboard/riwayat"
-                className="inline-block text-sm font-semibold text-primary-700 hover:text-primary-800"
+                className="inline-block type-label text-primary-700 hover:text-primary-800"
               >
                 ← Kembali ke Riwayat
               </Link>

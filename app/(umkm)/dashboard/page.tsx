@@ -61,10 +61,10 @@ export default async function UmkmDashboardPage(
     <>
       {/* Header */}
       <div>
-        <p className="text-sm font-bold uppercase tracking-widest text-primary-700">
+        <p className="type-table-head uppercase text-primary-700">
           Dashboard
         </p>
-        <h1 className="mt-1 font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h1 className="mt-1 font-head type-page-title text-neutral-900">
           Halo, {account.fullName}!
         </h1>
         <p className="mt-1.5 text-neutral-600">
@@ -141,19 +141,19 @@ export default async function UmkmDashboardPage(
         <section className="mt-10">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-widest text-primary-700">
+              <p className="flex items-center gap-1.5 type-table-head uppercase text-primary-700">
                 <Sparkles className="h-4 w-4" /> Rekomendasi untukmu
               </p>
-              <h2 className="mt-1 font-head text-xl font-extrabold tracking-[-0.02em] text-neutral-900">
+              <h2 className="mt-1 font-head type-section-title text-neutral-900">
                 Kreator yang cocok dengan {account.fullName}
               </h2>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p className="mt-1 type-table text-neutral-500">
                 Dicocokkan otomatis dari kategori usaha, kota, dan budget-mu.
               </p>
             </div>
             <Link
               href="/influencers"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800"
+              className="inline-flex items-center gap-1 type-label text-primary-700 hover:text-primary-800"
             >
               Lihat semua kreator <ArrowRight className="h-4 w-4" />
             </Link>
@@ -171,16 +171,16 @@ export default async function UmkmDashboardPage(
                 >
                   <Avatar name={rec.name} category={rec.categorySlug} size="lg" />
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1.5 truncate text-sm font-bold text-neutral-900 group-hover:text-primary-700">
+                    <p className="flex items-center gap-1.5 truncate type-card-title text-neutral-900 group-hover:text-primary-700">
                       {rec.name}
                       {rec.verified && (
                         <BadgeCheck className="h-4 w-4 shrink-0 text-primary-600" />
                       )}
                     </p>
-                    <p className="truncate text-xs text-neutral-500">
+                    <p className="truncate type-caption text-neutral-500">
                       {rec.handle} · {rec.category} · {rec.city}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-400">
+                    <p className="mt-0.5 flex items-center gap-1 type-caption text-neutral-400">
                       <Star className="h-3 w-3 fill-warning-500 text-warning-500" />
                       {rec.rating.toFixed(1)} · {rec.reviewCount} ulasan
                     </p>
@@ -191,7 +191,7 @@ export default async function UmkmDashboardPage(
                   {rec.matchReasons.map((reason) => (
                     <span
                       key={reason}
-                      className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700"
+                      className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 type-badge text-primary-700"
                     >
                       <Sparkles className="h-3 w-3" /> {reason}
                     </span>
@@ -200,10 +200,10 @@ export default async function UmkmDashboardPage(
 
                 <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-4">
                   <div>
-                    <p className="text-[11px] text-neutral-500">Mulai dari</p>
-                    <p className="font-head text-base font-extrabold tracking-[-0.02em] text-primary-700">
+                    <p className="type-caption text-neutral-500">Mulai dari</p>
+                    <p className="font-head type-card-title text-primary-700">
                       {formatRupiah(rec.startingPrice)}{" "}
-                      <span className="text-xs font-medium text-neutral-500">
+                      <span className="type-caption text-neutral-500">
                         / video
                       </span>
                     </p>
@@ -222,10 +222,10 @@ export default async function UmkmDashboardPage(
       <div className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="font-head text-xl font-extrabold tracking-[-0.02em] text-neutral-900">
+            <h2 className="font-head type-section-title text-neutral-900">
               Riwayat Kolaborasi
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 type-table text-neutral-500">
               {bookings.length} pengajuan tercatat. Klik kreator untuk melihat
               profil lengkap.
             </p>
@@ -233,7 +233,7 @@ export default async function UmkmDashboardPage(
           {bookings.length > 3 && (
             <Link
               href="/dashboard/riwayat"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800"
+              className="inline-flex items-center gap-1 type-label text-primary-700 hover:text-primary-800"
             >
               Lihat Semua <ArrowRight className="h-4 w-4" />
             </Link>

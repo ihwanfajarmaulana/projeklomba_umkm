@@ -66,7 +66,7 @@ export function RiwayatClient({
       key: "kode",
       header: "Kode",
       cell: (b) => (
-        <span className="font-mono text-xs font-bold text-neutral-900">
+        <span className="font-mono type-badge text-neutral-900">
           {b.code}
         </span>
       ),
@@ -80,11 +80,11 @@ export function RiwayatClient({
           <div className="min-w-0">
             <Link
               href={`/influencers/${b.influencerId}`}
-              className="block truncate text-sm font-bold text-neutral-900 hover:text-primary-700"
+              className="block truncate type-card-title text-neutral-900 hover:text-primary-700"
             >
               {b.influencerName}
             </Link>
-            <p className="truncate text-xs text-neutral-500">
+            <p className="truncate type-caption text-neutral-500">
               {b.influencerHandle} · {b.influencerCategory}
             </p>
           </div>
@@ -95,14 +95,14 @@ export function RiwayatClient({
       key: "paket",
       header: "Paket",
       cell: (b) => (
-        <span className="text-sm text-neutral-900">{b.packageName}</span>
+        <span className="type-table text-neutral-900">{b.packageName}</span>
       ),
     },
     {
       key: "nominal",
       header: "Nominal",
       cell: (b) => (
-        <span className="font-head text-sm font-bold tracking-[-0.02em] text-neutral-900">
+        <span className="font-head type-label text-neutral-900">
           {formatRupiah(b.amount)}
         </span>
       ),
@@ -111,7 +111,7 @@ export function RiwayatClient({
       key: "tanggal",
       header: "Tanggal",
       cell: (b) => (
-        <span className="text-sm text-neutral-500">{formatDate(b.createdAt)}</span>
+        <span className="type-table text-neutral-500">{formatDate(b.createdAt)}</span>
       ),
     },
     {
@@ -128,14 +128,14 @@ export function RiwayatClient({
           {b.status === "COMPLETED" && reviewRatings[b.id] === undefined && (
             <Link
               href={`/review/${b.id}`}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800"
+              className="inline-flex items-center gap-1 type-badge text-primary-700 hover:text-primary-800"
             >
               <Star className="h-3.5 w-3.5" /> Beri Ulasan
             </Link>
           )}
           <Link
             href={`/dashboard/riwayat/${b.id}`}
-            className="inline-flex items-center gap-1 rounded-xl border border-primary-300 bg-neutral-0 px-3 py-1.5 text-xs font-semibold text-primary-700 transition-colors duration-150 ease-standard hover:border-primary-400 hover:bg-primary-50"
+            className="inline-flex items-center gap-1 rounded-xl border border-primary-300 bg-neutral-0 px-3 py-1.5 type-badge text-primary-700 transition-colors duration-150 ease-standard hover:border-primary-400 hover:bg-primary-50"
           >
             Detail
           </Link>
@@ -164,7 +164,7 @@ export function RiwayatClient({
             <button
               type="button"
               onClick={() => selectFilter("semua")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary-500 px-4 py-2 text-sm font-semibold text-neutral-0 transition-colors duration-150 ease-standard hover:bg-primary-600"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary-500 px-4 py-2 type-label text-neutral-0 transition-colors duration-150 ease-standard hover:bg-primary-600"
             >
               Lihat Semua
             </button>

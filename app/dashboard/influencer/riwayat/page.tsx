@@ -39,7 +39,7 @@ export default async function InfluencerRiwayatPage(
         <p className="text-sm font-bold uppercase tracking-widest text-primary-700">
           Riwayat Kolaborasi
         </p>
-        <h1 className="mt-1 font-head text-3xl font-extrabold tracking-[-0.02em] text-neutral-900">
+        <h1 className="mt-1 type-page-title font-head text-neutral-900">
           Riwayat Kolaborasi
         </h1>
         <p className="mt-1.5 text-neutral-600">
